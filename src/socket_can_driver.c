@@ -71,7 +71,7 @@ initialize_can(const uint8_t channel)
     /* Set the socket to NON-BLOCKING mode */
     if((ret = fcntl(s, F_SETFL, O_NONBLOCK)) < 0) {
         log_warn("Can not set channel %hu to non-blocking mode, reason: %s", \
-                channel, strerror(ret));
+                channel, strerror(errno));
         goto FAILED_OPENED;
     }
 
@@ -79,7 +79,7 @@ initialize_can(const uint8_t channel)
     struct ifreq ifr;
     sprintf(ifr.ifr_name, "can%hu", channel);
     if((ret = ioctl(s, SIOCGIFINDEX, &ifr)) < 0) {
-        log_warn("Can not open channel %hu, reason: %s", channel, strerror(ret));
+        log_warn("Can not open channel %hu, reason: %s", channel, strerror(errno));
         goto FAILED_OPENED;
     }
 
@@ -89,7 +89,7 @@ initialize_can(const uint8_t channel)
     addr.can_family  = AF_CAN;
     addr.can_ifindex = ifr.ifr_ifindex;
     if((ret = bind(s, (struct sockaddr *)&addr, sizeof(addr))) < 0) {
-        log_warn("Can not bind to channel %hu, reason: %s", channel, strerror(ret));
+        log_warn("Can not bind to channel %hu, reason: %s", channel, strerror(errno));
         goto FAILED_OPENED;
     }
 
@@ -125,8 +125,13 @@ write_can_message(const uint8_t channel,
                   const size_t len,
                   const uint64_t data)
 {
-    if (channel >= CHANNEL_COUNT || can_socket_fd[channel] == -1)
+    if (channel >= CHANNEL_COUNT || can_socket_fd[channel] == -1) {
+        log_warn("Channel %hu is inavailable", channel);
         return -1;
+    }
+        
+    log_trace("Channel %hu: host -> motor 0x%04x: len=%llu 0x%016llx", \
+            channel, id, len, data);
 
     struct can_frame frame;
     memset(&frame, 0, sizeof(frame));
@@ -156,17 +161,24 @@ read_can_message(const uint8_t channel,
                  size_t *len,
                  uint64_t *data)
 {
-    if (channel >= CHANNEL_COUNT || can_socket_fd[channel] == -1)
+    if (channel >= CHANNEL_COUNT || can_socket_fd[channel] == -1) {
+        log_warn("Channel %hu is inavailable", channel);
         return -1;
+    }
 
     struct can_frame frame;
 
     if(read(can_socket_fd[channel], &frame, sizeof(struct can_frame)) \
             != sizeof(struct can_frame)) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            log_trace("Channel %hu is empty", channel);
             return 1; // Receive queue is empty.
-        else
+        }
+        else {
+            log_warn("Channel %hu read failed: %s", \
+                    channel, strerror(errno));
             return -1;
+        }
     }
 
     *id = frame.can_id;
@@ -174,6 +186,8 @@ read_can_message(const uint8_t channel,
     *data = 0;
     for (int i = 0; i < frame.can_dlc; i++)
         *data |= ((uint64_t)frame.data[i] << (56ull - 8ull * i));
+    log_trace("Channel %hu: motor 0x%04x -> host: len=%llu 0x%016llx", \
+            channel, *id, *len, *data);
     return 0;
 }
 

@@ -9,6 +9,7 @@
 
 int initialize_motors();
 int uninitialize_motors();
+int send_motor_set_zero(const uint8_t id);
 int scan_motors(const uint32_t timeout_us);
 int send_motors_pos(const float qpos[]);
 int pull_motors_msg();

@@ -2,10 +2,11 @@
  *  high-level abstract ready for use
  */
 
+#include <stdint.h>
 
-int initialize_driver();
-int uninitialize_driver();
-int send_command(const float target_pos[], const float target_spd[]);
-int resolve_command();
-const float* read_joints_pos();
-const float* read_joints_vel();
+int driver_initialize();
+int driver_uninitialize();
+int driver_set_motor_zero(const uint8_t id);
+int driver_send_qpos(const float qpos[]);
+int driver_pull_msg();
+int driver_get_qpos_qvel(float qpos[], float qvel[]);

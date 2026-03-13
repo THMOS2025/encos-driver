@@ -31,14 +31,24 @@ static uint16_t current_vel_raw[MOTOR_COUNT];
 
 int send_query_id(const uint8_t channel)
 {
+    log_trace("Channel %hu: send query_id command", channel);
     return write_can_message(channel, 0x7ff, 4, 0xffff008200000000ull);
 }
 
 static int send_set_id(const uint8_t channel, const uint8_t old_id, const uint8_t new_id)
 {
+    log_debug("Channel %hu: send set_id command old=%hu new=%hu", \
+            channel, old_id, new_id);
     return write_can_message(channel, 0x7ff, 6, ((uint64_t)old_id << 48ull) \
                                                 | ((uint64_t)new_id << 16ull) \
                                                 | 0x0000000400000000ull);
+}
+
+static int send_set_zero(const uint8_t channel, const uint8_t id)
+{
+    log_debug("Channel %hu: send set_zero command id=%hu", channel, id);
+    return write_can_message(channel, 0x7ff, 4, ((uint64_t)id << 48ull) \
+                                                | 0x0000000300000000ull);
 }
 
 static int send_pos_control(const uint8_t channel, const uint8_t id)
@@ -64,21 +74,21 @@ static int parse_motor_id()
 {
     if(recv_id != 0x7ff) return NOT_RELATED_MSG;
     if(recv_len == 5) { /* Query ID success */
-        if((recv_buf >> 40ull) != 0xffff00ull) return NOT_RELATED_MSG;
+        if((recv_buf >> 40ull) != 0xffff01ull) return NOT_RELATED_MSG;
         recv_id = (uint8_t)((recv_buf >> 24ull) & 0xffull);
         motor_to_channel[recv_id] = recv_ch;
         log_trace("Motor %hu found on channel %hu", recv_id, recv_ch);
         return COMMAND_SUCCESS;
     }
-    else{
+    else if(recv_len == 4){
         if(recv_buf == 0x8080018000000000ull) {
-            log_debug("Channel %hu failed query motor ids", recv_ch);
+            log_warn("Channel %hu failed query motor ids", recv_ch);
             return COMMAND_FAILED; /* query id failed */
         }
         recv_id = (uint8_t)((recv_buf >> 48ull) & 0xffull);
         switch((recv_buf >> 32ull) & 0xffffull) {
         case 0x0100ull:
-            log_debug("Motor %hu failed something", recv_id);
+            log_warn("Motor %hu failed something", recv_id);
             return COMMAND_FAILED; /* set failed (section 5 of the manual) */
         case 0x0103ull:
             log_trace("Motor %hu set zero point success", recv_id);
@@ -90,6 +100,7 @@ static int parse_motor_id()
             return NOT_RELATED_MSG; 
         }
     }
+    return NOT_RELATED_MSG; 
 }
 
 static int parse_motor_status() /* We only use response class 1 */
@@ -148,6 +159,8 @@ int scan_motors(const uint32_t timeout_us)
             while(read_next_msg(i) == 0) {
                 if(parse_motor_id() == 0 && !scanned[recv_id]) {
                     ++total_motors;
+                    log_info("Found motor %hu on channel %hu", \
+                            recv_id, recv_ch);
                     scanned[recv_id] = 1;
                     motor_error[recv_id] = 0;
                 }
@@ -163,6 +176,14 @@ int scan_motors(const uint32_t timeout_us)
     return -1; /* timeout */
 }
 
+int send_motor_set_zero(const uint8_t id)
+{
+    if(motor_to_channel[id] && channel_available[motor_to_channel[id]])
+        return send_set_zero(motor_to_channel[id], id);
+    log_warn("Can not send set zero for motor %hu", id);
+    return -1;
+}
+
 int send_motors_pos(const float qpos[])
 {
     /* 0~65536 : -12.5rad~12.5rad */
@@ -171,12 +192,13 @@ int send_motors_pos(const float qpos[])
     const float offset = 12.5f;
 
     #pragma omp simd
-    for(int j = 0; j < MOTOR_COUNT; ++j) {
+    for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
         // Linear mapping: (qpos + 12.5) * 2621.44
         desired_pos_raw[j] = (uint16_t)((qpos[j] + offset) * scale);
+        log_debug("Motor %hu pos command: %u", j, desired_pos_raw[j]);
     }
 
-    for(int j = 0, i; j < MOTOR_COUNT; ++j) {
+    for(uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
         if((i = motor_to_channel[j]) == 0) continue;
         if(channel_available[i] == 0) continue;
         if(send_pos_control(i, j)) continue;
@@ -199,15 +221,17 @@ int pull_motors_msg()
 int get_motors_pos_vel(float qpos[], float qvel[])
 {
     const float pos_scale = 25.0f / 65536.0f;
-    const float pos_offset = -12.5f;
+    const float pos_offset = 12.5f;
 
     const float vel_scale = 36.0f / 4096.0f;
-    const float vel_offset = -18.0f;
+    const float vel_offset = 18.0f;
 
     #pragma omp simd
-    for(int j = 0; j < MOTOR_COUNT; ++j) {
-        qpos[j] = ((float)current_pos_raw[j] * pos_scale) + pos_offset;
-        qvel[j] = ((float)current_vel_raw[j] * vel_scale) + vel_offset;
+    for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
+        log_debug("motor %hu: qpos=%hu qvel=%hu", \
+                j, current_pos_raw[j], current_vel_raw[j]);
+        qpos[j] = ((float)(current_pos_raw[j]) * pos_scale) - pos_offset;
+        qvel[j] = ((float)(current_vel_raw[j]) * vel_scale) - vel_offset;
     }
 
     return 0; 
