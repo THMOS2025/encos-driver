@@ -17,6 +17,15 @@ static uint64_t recv_buf;
 static size_t   recv_len;
 static uint16_t recv_id;
 
+/* limits - it is weired that the sdk uses relative */
+static uint16_t kp_range[2][MOTOR_COUNT];
+static uint16_t kd_range[2][MOTOR_COUNT];
+static uint16_t pos_range[2][MOTOR_COUNT];
+static uint16_t vel_range[2][MOTOR_COUNT];
+static uint16_t tor_range[2][MOTOR_COUNT];
+static uint16_t cur_range[2][MOTOR_COUNT];
+
+/* encos status */
 static uint8_t  channel_available[CHANNEL_COUNT];
 static uint8_t  motor_to_channel[MOTOR_COUNT];
 static uint8_t  motor_error[MOTOR_COUNT];
@@ -53,8 +62,19 @@ static int send_set_zero(const uint8_t channel, const uint8_t id)
 
 static int send_pos_control(const uint8_t channel, const uint8_t id)
 {
-    return write_can_message(channel, id, 8, 0x1FFFFFull << 40ull \
-                | ((uint64_t)(desired_pos_raw[id]) << 24ull));
+    return write_can_message(channel, id, 8, 0x0ffffull << 40ull \
+                | ((uint64_t)(desired_pos_raw[id]) << 24ull) \
+                | 0x7ff7ffull /* 7ff stands for zero in 0-4095 range */);
+}
+
+static int send_range_config(const uint8_t channel, const uint8_t id, \
+        const uint8_t cfg, const uint16_t minn, const uint16_t maxn)
+{
+    return write_can_message(channel, id, 6, \
+            0x06ull << 61ull \
+            | 0x09ull << 48ull \
+            | (uint64_t)minn << 32ull \
+            | (uint64_t)maxn << 32ull);
 }
 
 
@@ -116,6 +136,15 @@ static int parse_motor_status() /* We only use response class 1 */
     current_vel_raw[recv_id] = (uint16_t)((recv_buf >> 28ull) & 0xfffull);
     return COMMAND_SUCCESS;
 }
+
+static int parse_motor_set_range()
+{
+    if(recv_len != 7 || recv_id >= MOTOR_COUNT || (recv_buf >> 48ull) != 0xfffeull)
+        return NOT_RELATED_MSG; /* not related */
+    log_info("Config %s success on motor %hu", \
+            config_code_to_name[(recv_buf>>40ull)&0xffull], recv_id);
+}
+
 
 
 /* 
@@ -188,15 +217,12 @@ int send_motors_pos(const float qpos[])
 {
     /* 0~65536 : -12.5rad~12.5rad */
     uint8_t ok_cnt = 0;
-    const float scale = 2621.44f;  /* precompute the constant helps trigger simd */
-    const float offset = 12.5f;
+    const float scale = 65536.0f / 2.0f;
+    const float offset = 1.0f;
 
     #pragma omp simd
-    for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
-        // Linear mapping: (qpos + 12.5) * 2621.44
+    for(uint8_t j = 0; j < MOTOR_COUNT; ++j)
         desired_pos_raw[j] = (uint16_t)((qpos[j] + offset) * scale);
-        log_debug("Motor %hu pos command: %u", j, desired_pos_raw[j]);
-    }
 
     for(uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
         if((i = motor_to_channel[j]) == 0) continue;
@@ -205,7 +231,11 @@ int send_motors_pos(const float qpos[])
         ++ok_cnt;
     }
 
-    return (ok_cnt == MOTOR_COUNT) ? 0 : -1;
+    if(ok_cnt != MOTOR_COUNT) {
+        log_warn("Only %hu motors send successfully", ok_cnt);
+        return -1;
+    }
+    return 0;
 }
 
 int pull_motors_msg()
@@ -214,25 +244,62 @@ int pull_motors_msg()
         while(read_next_msg(i) == 0) {
             if(parse_motor_status() <= 0) continue;
             if(parse_motor_id() <= 0) continue;
+            if(parse_motor_set_range() <= 0) continue;
         }
     }
 }
 
 int get_motors_pos_vel(float qpos[], float qvel[])
 {
-    const float pos_scale = 25.0f / 65536.0f;
-    const float pos_offset = 12.5f;
-
-    const float vel_scale = 36.0f / 4096.0f;
-    const float vel_offset = 18.0f;
+    const float scale = 2.0f / 65536.0f;
+    const float offset = 1.0f;
 
     #pragma omp simd
     for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
-        log_debug("motor %hu: qpos=%hu qvel=%hu", \
-                j, current_pos_raw[j], current_vel_raw[j]);
-        qpos[j] = ((float)(current_pos_raw[j]) * pos_scale) - pos_offset;
-        qvel[j] = ((float)(current_vel_raw[j]) * vel_scale) - vel_offset;
+        qpos[j] = (float)(current_pos_raw[j]) * scale - offset;
+        qvel[j] = (float)(current_vel_raw[j]) * scale - offset;
     }
 
     return 0; 
+}
+
+static int send_motor_set_range( \
+        const float cfg_range[2][MOTOR_COUNT], 
+        uint16_t self_range[2][MOTOR_COUNT], 
+        const float scaler, const uint8_t code)
+{
+    uint8_t ok_cnt = 0;
+    for(uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
+        if((i = motor_to_channel[j]) == 0) continue;
+        if(channel_available[i] == 0) continue;
+        if(send_range_config(motor_to_channel[j], j, code, 
+                (self_range[0][j] = (uint16_t)(cfg_range[0][j] * scaler)), /* minn */
+                (self_range[1][j] = (uint16_t)(cfg_range[1][j] * scaler))  /* maxn */
+            ) != 0) continue;
+        ++ok_cnt;
+    }
+    if(ok_cnt != MOTOR_COUNT) {
+        log_warn("Set %s: only %hu motors send successfully", \
+                config_code_to_name[code], ok_cnt);  
+        return -1;
+    }
+}
+
+int send_motor_set_pos_range(const float qpos_range[2][MOTOR_COUNT]) {
+    return send_motor_set_range(qpos_range, pos_range, 100.0f, CONFIG_POS_RANGE);
+}
+int send_motor_set_vel_range(const float qvel_range[2][MOTOR_COUNT]) {
+    return send_motor_set_range(qvel_range, vel_range, 100.0f, CONFIG_VEL_RANGE);
+}
+int send_motor_set_tor_range(const float qtor_range[2][MOTOR_COUNT]) {
+    return send_motor_set_range(qtor_range, tor_range, 10.0f, CONFIG_TOR_RANGE);
+}
+int send_motor_set_cur_range(const float qcur_range[2][MOTOR_COUNT]) {
+    return send_motor_set_range(qcur_range, cur_range, 10.0f, CONFIG_TOR_RANGE);
+}
+int send_motor_set_kp_range(const float qkp_range[2][MOTOR_COUNT]) {
+    return send_motor_set_range(qkp_range, kp_range, 1.0f, CONFIG_KP_RANGE);
+}
+int send_motor_set_kd_range(const float qkd_range[2][MOTOR_COUNT]) {
+    return send_motor_set_range(qkd_range, kd_range, 1.0f, CONFIG_KD_RANGE);
 }

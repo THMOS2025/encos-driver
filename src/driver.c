@@ -35,6 +35,7 @@ LIB_API int driver_initialize()
     log_info("Initializing driver");
     initialize_motors();
     scan_motors(1000000);
+    send_motor_set_pos_range(QPOS_RANGE);
 }
 
 LIB_API int driver_uninitialize()
