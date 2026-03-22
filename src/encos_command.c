@@ -249,6 +249,7 @@ int send_motors_pos(const float qpos[]) {
 
   for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
     if ((i = motor_to_channel[j]) == 0xFF) {
+      printf("Motor %hu not found", j);
       continue;
     }
     if (channel_available[i] == 0) {
