@@ -40,5 +40,7 @@ target_link_libraries(encos_driver_lib PRIVATE m)
 # target_include_directories(encos_driver PRIVATE include src)
 
 add_executable(encos_driver src/main.c)
+add_executable(motor_test src/motor_test.c)
 
 target_link_libraries(encos_driver PRIVATE encos_driver_lib m)
+target_link_libraries(motor_test PRIVATE encos_driver_lib m)
