@@ -10,3 +10,8 @@ int driver_set_motor_zero(const uint8_t id);
 int driver_send_qpos(const float qpos[]);
 int driver_pull_msg();
 int driver_get_qpos_qvel(float qpos[], float qvel[]);
+int driver_get_qpos_qvel_qtor(float qpos[], float qvel[], float qtor[]);
+
+float* read_joints_pos();
+float* read_joints_vel();
+float* read_joints_tor();

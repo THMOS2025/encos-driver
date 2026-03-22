@@ -17,6 +17,11 @@ PYBIND11_MODULE(encos_python, m) {
     
     m.def("uninitialize", &driver_uninitialize, "Uninitialize the motor driver");
 
+    // Direct memory views (Zero-copy)
+    m.def("get_positions", []() { return get_mapped_array(read_joints_pos()); });
+    m.def("get_velocities", []() { return get_mapped_array(read_joints_vel()); });
+    m.def("get_torques", []() { return get_mapped_array(read_joints_tor()); });
+
     m.def("set_motor_zero", &driver_set_motor_zero, py::arg("id"), 
           "Set the current position of a specific motor as zero");
 
