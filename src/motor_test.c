@@ -144,7 +144,7 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
     // ==========================================
     double loop_elapsed = get_time_s() - loop_start;
     if (dt > loop_elapsed) {
-      usleep((useconds_t)((dt - loop_elapsed) * 1e6));
+      usleep((unsigned int)((dt - loop_elapsed) * 1e6));
     }
 
     // 2. 延迟结束后，拉取并获取最新状态
@@ -199,9 +199,39 @@ int main(int argc, char *argv[]) {
   printf("Loaded %d test(s)\n", n_tests);
 
   // Initialize driver
-  driver_initialize();
-  printf("Driver initialized. MOTOR_COUNT: %d\n", MOTOR_COUNT);
-  usleep(1000000); // 替换为 usleep 保持代码风格一致，让总线有时间准备
+  uint8_t detected_ids[MOTOR_COUNT];
+  int detected_count = driver_initialize(detected_ids, MOTOR_COUNT);
+  if (detected_count < 0) {
+    printf("Failed to initialize driver\n");
+    return -1;
+  }
+  printf("Driver initialized. Found %d motor(s) on bus: ", detected_count);
+  if (detected_count == 0) {
+    printf("NONE\n");
+  } else {
+    printf("[");
+    for (int i = 0; i < detected_count; i++) {
+      printf("%d%s", detected_ids[i], (i == detected_count - 1) ? "" : ", ");
+    }
+    printf("]\n");
+  }
+
+  // Verify configured motors are present
+  for (int i = 0; i < n_tests; i++) {
+    int found = 0;
+    for (int j = 0; j < detected_count; j++) {
+      if (detected_ids[j] == tests[i].motor_id) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found) {
+      printf("WARNING: Motor ID %d (from config test %d) NOT detected on bus!\n", 
+             tests[i].motor_id, i + 1);
+    }
+  }
+
+  usleep(1000000); // 让总线有时间准备
 
   // Run each test
   for (int i = 0; i < n_tests; i++) {
