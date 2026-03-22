@@ -335,11 +335,6 @@ int send_motor_set_kd_range(const float qkd_range[2][MOTOR_COUNT]) {
 int set_motors_kpkd(const float kp[], const float kd[])
 {
     for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
-        /* Kp: physical -> 16-bit raw, linearly mapped to kp_range
-         * kp_range stores raw range values (phys * scaler=1.0) 
-         * kp_range[0][j] = raw_min, kp_range[1][j] = raw_max 
-         * Since scaler=1.0: kp_range[0][j] = QKP_RANGE[0][j], kp_range[1][j] = QKP_RANGE[1][j]
-         * raw = (kp - range_min) / (range_max - range_min) * 65535 */
         float kp_min = (float)kp_range[0][j];
         float kp_max = (float)kp_range[1][j];
         if(kp_max > kp_min) {
@@ -351,7 +346,6 @@ int set_motors_kpkd(const float kp[], const float kd[])
             desired_kp_raw[j] = 0;
         }
 
-        /* Kd: physical -> 12-bit raw (0-4095) */
         float kd_min = (float)kd_range[0][j];
         float kd_max = (float)kd_range[1][j];
         if(kd_max > kd_min) {
@@ -361,6 +355,15 @@ int set_motors_kpkd(const float kp[], const float kd[])
             desired_kd_raw[j] = (uint16_t)(norm * 4095.0f);
         } else {
             desired_kd_raw[j] = 0;
+        }
+
+        /* Debug: print non-zero motors */
+        if(kp[j] != 0.0f || kd[j] != 0.0f) {
+            printf("[DEBUG] motor %d: kp=%.4f kd=%.4f | kp_range=[%u,%u] kd_range=[%u,%u] | kp_raw=%u kd_raw=%u\n",
+                j, kp[j], kd[j],
+                kp_range[0][j], kp_range[1][j],
+                kd_range[0][j], kd_range[1][j],
+                desired_kp_raw[j], desired_kd_raw[j]);
         }
     }
     return 0;

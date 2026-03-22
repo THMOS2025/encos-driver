@@ -92,7 +92,13 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
     float kd_arr[MOTOR_COUNT] = {0};
     kp_arr[mid] = cfg->kp;
     kd_arr[mid] = cfg->kd;
+    printf("[DEBUG] Setting Kp=%.4f Kd=%.4f for motor %d\n", cfg->kp, cfg->kd, mid);
+    printf("[DEBUG] QPOS_RANGE[1][%d] = %.4f (used for normalization)\n", mid, QPOS_RANGE[1][mid]);
+    printf("[DEBUG] QTOR_RANGE[1][%d] = %.4f\n", mid, QTOR_RANGE[1][mid]);
+    printf("[DEBUG] QKP_RANGE[1][%d] = %.4f\n", mid, QKP_RANGE[1][mid]);
+    printf("[DEBUG] QKD_RANGE[1][%d] = %.4f\n", mid, QKD_RANGE[1][mid]);
     driver_set_kpkd(kp_arr, kd_arr);
+    printf("[DEBUG] driver_set_kpkd called (check kp_range/kd_range above)\n");
 
     // Open log file
     char filename[128];
@@ -123,6 +129,12 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
 
         // Normalize to [-1, 1] using QPOS_RANGE before sending
         target_pos_norm[mid] = target_phys / QPOS_RANGE[1][mid];
+
+        // Debug: print first few steps to see normalized values
+        if (step < 5) {
+            printf("[DEBUG] step=%d t=%.4f target_phys=%.6f target_norm=%.6f\n",
+                   step, t, target_phys, target_pos_norm[mid]);
+        }
 
         driver_send_qpos(target_pos_norm);
         driver_pull_msg();
