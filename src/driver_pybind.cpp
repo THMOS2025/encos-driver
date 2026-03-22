@@ -35,6 +35,7 @@ PYBIND11_MODULE(motor_driver, m) {
     // Direct memory views (Zero-copy)
     m.def("get_positions", []() { return get_mapped_array(read_joints_pos()); });
     m.def("get_velocities", []() { return get_mapped_array(read_joints_vel()); });
+    m.def("get_torques", []() { return get_mapped_array(read_joints_tor()); });
 
     // Fast command injection
     m.def("send_command", &send_command_fast);

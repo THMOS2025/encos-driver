@@ -28,6 +28,11 @@
 
 static float qpos[MOTOR_COUNT];
 static float qvel[MOTOR_COUNT];
+static float qtor[MOTOR_COUNT];
+
+LIB_API float* read_joints_pos() { return qpos; }
+LIB_API float* read_joints_vel() { return qvel; }
+LIB_API float* read_joints_tor() { return qtor; }
 
 LIB_API int driver_initialize()
 {
@@ -61,4 +66,9 @@ LIB_API int driver_pull_msg()
 LIB_API int driver_get_qpos_qvel(float qpos[], float qvel[])
 {
     return get_motors_pos_vel(qpos, qvel);
+}
+
+LIB_API int driver_get_qpos_qvel_qtor(float qpos[], float qvel[], float qtor[])
+{
+    return get_motors_pos_vel_tor(qpos, qvel, qtor);
 }

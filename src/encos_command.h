@@ -18,6 +18,7 @@ int scan_motors(const uint32_t timeout_us);
 int send_motors_pos(const float qpos[MOTOR_COUNT]);
 int pull_motors_msg();
 int get_motors_pos_vel(float qpos[MOTOR_COUNT], float qvel[MOTOR_COUNT]);
+int get_motors_pos_vel_tor(float qpos[MOTOR_COUNT], float qvel[MOTOR_COUNT], float qtor[MOTOR_COUNT]);
 
 /* Config */
 int send_motor_set_pos_range(const float qpos_range[2][MOTOR_COUNT]);

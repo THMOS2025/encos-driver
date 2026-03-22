@@ -32,6 +32,7 @@ static uint8_t  motor_error[MOTOR_COUNT];
 static uint16_t desired_pos_raw[MOTOR_COUNT];
 static uint16_t current_pos_raw[MOTOR_COUNT];
 static uint16_t current_vel_raw[MOTOR_COUNT];
+static uint16_t current_tor_raw[MOTOR_COUNT];
 
 
 /* 
@@ -134,6 +135,8 @@ static int parse_motor_status() /* We only use response class 1 */
     current_pos_raw[recv_id] = (uint16_t)((recv_buf >> 40ull) & 0xffffull);
     /* omega field : uint12 */
     current_vel_raw[recv_id] = (uint16_t)((recv_buf >> 28ull) & 0xfffull);
+    /* torque/current field : uint12 */
+    current_tor_raw[recv_id] = (uint16_t)((recv_buf >> 16ull) & 0xfffull);
     return COMMAND_SUCCESS;
 }
 
@@ -157,6 +160,7 @@ int initialize_motors()
     memset(desired_pos_raw, 0, sizeof(desired_pos_raw));
     memset(current_pos_raw, 0, sizeof(current_pos_raw));
     memset(current_vel_raw, 0, sizeof(current_vel_raw));
+    memset(current_tor_raw, 0, sizeof(current_tor_raw));
     for(uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
         if(initialize_can(i) < 0) continue;
         channel_available[i] = 1; 
@@ -258,6 +262,21 @@ int get_motors_pos_vel(float qpos[], float qvel[])
     for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
         qpos[j] = (float)(current_pos_raw[j]) * scale - offset;
         qvel[j] = (float)(current_vel_raw[j]) * scale - offset;
+    }
+
+    return 0; 
+}
+
+int get_motors_pos_vel_tor(float qpos[], float qvel[], float qtor[])
+{
+    const float scale = 2.0f / 65536.0f;
+    const float offset = 1.0f;
+
+    #pragma omp simd
+    for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
+        qpos[j] = (float)(current_pos_raw[j]) * scale - offset;
+        qvel[j] = (float)(current_vel_raw[j]) * scale - offset;
+        qtor[j] = (float)(current_tor_raw[j]) * scale - offset; // Using same scale for now
     }
 
     return 0; 
