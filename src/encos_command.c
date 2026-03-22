@@ -32,6 +32,8 @@ static uint8_t  motor_error[MOTOR_COUNT];
 static uint16_t desired_pos_raw[MOTOR_COUNT];
 static uint16_t desired_kp_raw[MOTOR_COUNT];
 static uint16_t desired_kd_raw[MOTOR_COUNT];
+static uint16_t desired_vel_raw[MOTOR_COUNT];
+static uint16_t desired_tor_raw[MOTOR_COUNT];
 static uint16_t current_pos_raw[MOTOR_COUNT];
 static uint16_t current_vel_raw[MOTOR_COUNT];
 static uint16_t current_tor_raw[MOTOR_COUNT];
@@ -65,11 +67,14 @@ static int send_set_zero(const uint8_t channel, const uint8_t id)
 
 static int send_pos_control(const uint8_t channel, const uint8_t id)
 {
-    return write_can_message(channel, id, 8, 
-                ((uint64_t)(desired_kp_raw[id]) << 40ull) \
-                | ((uint64_t)(desired_pos_raw[id]) << 24ull) \
-                | ((uint64_t)(desired_kd_raw[id]) << 12ull) \
-                | 0x7ffull /* torque ff = zero */);
+    /* Protocol: mode(3)|KP(12)|KD(9)|pos(16)|vel(12)|tor(12) = 64 bits */
+    return write_can_message(channel, id, 8,
+                ((uint64_t)0x00ull << 61)                                  /* mode = 0 (position) */
+                | ((uint64_t)(desired_kp_raw[id] & 0xFFF) << 49ull)        /* KP: uint12 */
+                | ((uint64_t)(desired_kd_raw[id] & 0x1FF) << 40ull)        /* KD: uint9  */
+                | ((uint64_t)(desired_pos_raw[id]) << 24ull)               /* pos: uint16 */
+                | ((uint64_t)(desired_vel_raw[id] & 0xFFF) << 12ull)       /* vel: uint12 */
+                | ((uint64_t)(desired_tor_raw[id] & 0xFFF)))               /* tor: uint12 */;
 }
 
 static int send_range_config(const uint8_t channel, const uint8_t id, \
@@ -166,10 +171,12 @@ int initialize_motors()
     memset(current_pos_raw, 0, sizeof(current_pos_raw));
     memset(current_vel_raw, 0, sizeof(current_vel_raw));
     memset(current_tor_raw, 0, sizeof(current_tor_raw));
-    /* Default kp = max, kd = zero (original hardcoded values) */
+    /* Default kp = max, kd = max, vel = midpoint, tor = midpoint */
     for(uint8_t i = 0; i < MOTOR_COUNT; ++i) {
-        desired_kp_raw[i] = 0xffff;
-        desired_kd_raw[i] = 0x7ff;
+        desired_kp_raw[i] = 0xFFF;   /* 12-bit max = 4095 */
+        desired_kd_raw[i] = 0x1FF;   /* 9-bit max  = 511  */
+        desired_vel_raw[i] = 0x800;  /* 12-bit midpoint (zero vel) */
+        desired_tor_raw[i] = 0x800;  /* 12-bit midpoint (zero tor) */
     }
     for(uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
         if(initialize_can(i) < 0) continue;
@@ -335,35 +342,35 @@ int send_motor_set_kd_range(const float qkd_range[2][MOTOR_COUNT]) {
 
 int set_motors_kpkd(const float kp[], const float kd[])
 {
+    /* Use QKP_RANGE / QKD_RANGE from constant.c directly */
     for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
-        float kp_min = (float)kp_range[0][j];
-        float kp_max = (float)kp_range[1][j];
+        float kp_min = QKP_RANGE[0][j];
+        float kp_max = QKP_RANGE[1][j];
         if(kp_max > kp_min) {
             float norm = (kp[j] - kp_min) / (kp_max - kp_min);
             if(norm < 0.0f) norm = 0.0f;
             if(norm > 1.0f) norm = 1.0f;
-            desired_kp_raw[j] = (uint16_t)(norm * 65535.0f);
+            desired_kp_raw[j] = (uint16_t)(norm * 4095.0f);  /* KP is uint12 */
         } else {
             desired_kp_raw[j] = 0;
         }
 
-        float kd_min = (float)kd_range[0][j];
-        float kd_max = (float)kd_range[1][j];
+        float kd_min = QKD_RANGE[0][j];
+        float kd_max = QKD_RANGE[1][j];
         if(kd_max > kd_min) {
             float norm = (kd[j] - kd_min) / (kd_max - kd_min);
             if(norm < 0.0f) norm = 0.0f;
             if(norm > 1.0f) norm = 1.0f;
-            desired_kd_raw[j] = (uint16_t)(norm * 4095.0f);
+            desired_kd_raw[j] = (uint16_t)(norm * 511.0f);   /* KD is uint9 */
         } else {
             desired_kd_raw[j] = 0;
         }
 
         /* Debug: print non-zero motors */
         if(kp[j] != 0.0f || kd[j] != 0.0f) {
-            printf("[DEBUG] motor %d: kp=%.4f kd=%.4f | kp_range=[%u,%u] kd_range=[%u,%u] | kp_raw=%u kd_raw=%u\n",
+            printf("[DEBUG] motor %d: kp=%.4f kd=%.4f | QKP_RANGE=[%.1f,%.1f] QKD_RANGE=[%.1f,%.1f] | kp_raw=%u kd_raw=%u\n",
                 j, kp[j], kd[j],
-                kp_range[0][j], kp_range[1][j],
-                kd_range[0][j], kd_range[1][j],
+                kp_min, kp_max, kd_min, kd_max,
                 desired_kp_raw[j], desired_kd_raw[j]);
         }
     }
