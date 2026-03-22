@@ -161,6 +161,7 @@ int initialize_motors()
 {
     int ret = 0;
     memset(channel_available, 0, sizeof(channel_available));
+    memset(motor_to_channel, 0xFF, sizeof(motor_to_channel)); /* 0xFF = unassigned */
     memset(desired_pos_raw, 0, sizeof(desired_pos_raw));
     memset(current_pos_raw, 0, sizeof(current_pos_raw));
     memset(current_vel_raw, 0, sizeof(current_vel_raw));
@@ -220,7 +221,7 @@ int scan_motors(const uint32_t timeout_us)
 
 int send_motor_set_zero(const uint8_t id)
 {
-    if(motor_to_channel[id] && channel_available[motor_to_channel[id]])
+    if(motor_to_channel[id] != 0xFF && channel_available[motor_to_channel[id]])
         return send_set_zero(motor_to_channel[id], id);
     log_warn("Can not send set zero for motor %hu", id);
     return -1;
@@ -238,7 +239,7 @@ int send_motors_pos(const float qpos[])
         desired_pos_raw[j] = (uint16_t)((qpos[j] + offset) * scale);
 
     for(uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
-        if((i = motor_to_channel[j]) == 0) continue;
+        if((i = motor_to_channel[j]) == 0xFF) continue;
         if(channel_available[i] == 0) continue;
         if(send_pos_control(i, j)) continue;
         ++ok_cnt;
@@ -298,7 +299,7 @@ static int send_motor_set_range( \
 {
     uint8_t ok_cnt = 0;
     for(uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
-        if((i = motor_to_channel[j]) == 0) continue;
+        if((i = motor_to_channel[j]) == 0xFF) continue;
         if(channel_available[i] == 0) continue;
         if(send_range_config(motor_to_channel[j], j, code, 
                 (self_range[0][j] = (uint16_t)(cfg_range[0][j] * scaler)), /* minn */
