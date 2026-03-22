@@ -38,7 +38,7 @@ static uint16_t desired_vel_raw[MOTOR_COUNT];
 static uint16_t desired_tor_raw[MOTOR_COUNT];
 static uint16_t current_pos_raw[MOTOR_COUNT];
 static uint16_t current_vel_raw[MOTOR_COUNT];
-static uint16_t current_tor_raw[MOTOR_COUNT];
+static uint16_t current_cur_raw[MOTOR_COUNT];
 
 /*
  * Send command
@@ -141,7 +141,7 @@ static int parse_motor_status() /* We only use response class 1 */
   /* omega field : uint12 */
   current_vel_raw[recv_id] = (uint16_t)((recv_buf >> 28ull) & 0xfffull);
   /* torque/current field : uint12 */
-  current_tor_raw[recv_id] = (uint16_t)((recv_buf >> 16ull) & 0xfffull);
+  current_cur_raw[recv_id] = (uint16_t)((recv_buf >> 16ull) & 0xfffull);
   return COMMAND_SUCCESS;
 }
 
@@ -164,7 +164,7 @@ int initialize_motors() {
   memset(desired_pos_raw, 0, sizeof(desired_pos_raw));
   memset(current_pos_raw, 0, sizeof(current_pos_raw));
   memset(current_vel_raw, 0, sizeof(current_vel_raw));
-  memset(current_tor_raw, 0, sizeof(current_tor_raw));
+  memset(current_cur_raw, 0, sizeof(current_cur_raw));
   /* Default kp = max, kd = max, vel = midpoint, tor = midpoint */
   for (uint8_t i = 0; i < MOTOR_COUNT; ++i) {
     desired_kp_raw[i] = 0xFFF;  /* 12-bit max = 4095 */
@@ -293,24 +293,25 @@ int get_motors_pos_vel(float qpos[], float qvel[]) {
   return 0;
 }
 
-int get_motors_pos_vel_tor(float qpos[], float qvel[], float qtor[]) {
+int get_motors_pos_vel_cur(float qpos[], float qvel[], float qcur[]) {
   /* Protocol POS Range: -12.5rad to 12.5rad -> 0 to 65535 */
   /* Protocol SPD Range: -18rad/s to 18rad/s -> 0 to 4095 */
-  /* Torque feedforward reading skipped / kept as is but using fixed soft max 30 for now if ever queried */
+  /* Protocol TOR/CUR Range: configured dynamically via QTOR_RANGE (e.g., 30 for 4310, 60 for 6408) */
   const float pos_scale = 25.0f / 65535.0f;
   const float pos_offset = 12.5f;
 
   const float vel_scale = 36.0f / 4095.0f;
   const float vel_offset = 18.0f;
   
-  const float tor_scale = 60.0f / 4095.0f;
-  const float tor_offset = 30.0f;
-
 #pragma omp simd
   for (uint8_t j = 0; j < MOTOR_COUNT; ++j) {
     qpos[j] = (float)(current_pos_raw[j]) * pos_scale - pos_offset;
     qvel[j] = (float)(current_vel_raw[j]) * vel_scale - vel_offset;
-    qtor[j] = (float)(current_tor_raw[j]) * tor_scale - tor_offset; 
+    
+    // Dynamically scale mapping based on motor's configured torque range
+    float cur_max = QTOR_RANGE[1][j]; 
+    float cur_scale = (cur_max * 2.0f) / 4095.0f;
+    qcur[j] = (float)(current_cur_raw[j]) * cur_scale - cur_max; 
   }
 
   return 0;

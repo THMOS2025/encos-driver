@@ -11,8 +11,8 @@ int driver_send_qpos(const float qpos[]);
 int driver_set_kpkd(const float kp[], const float kd[]);
 int driver_pull_msg();
 int driver_get_qpos_qvel(float qpos[], float qvel[]);
-int driver_get_qpos_qvel_qtor(float qpos[], float qvel[], float qtor[]);
+int driver_get_qpos_qvel_qcur(float qpos[], float qvel[], float qcur[]);
 
 float* read_joints_pos();
 float* read_joints_vel();
-float* read_joints_tor();
+float* read_joints_cur();

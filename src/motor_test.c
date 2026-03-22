@@ -110,12 +110,12 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
         printf("ERROR: Cannot open log file: %s\n", filename);
         return -1;
     }
-    fprintf(logf, "time,target_pos,actual_pos,actual_vel,actual_tor\n");
+    fprintf(logf, "time,target_pos,actual_pos,actual_vel,actual_cur\n");
 
     float target_pos[MOTOR_COUNT] = {0};
     float qpos[MOTOR_COUNT] = {0};
     float qvel[MOTOR_COUNT] = {0};
-    float qtor[MOTOR_COUNT] = {0};
+    float qcur[MOTOR_COUNT] = {0};
 
     double start_time = get_time_s();
 
@@ -137,21 +137,21 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
 
         driver_send_qpos(target_pos);
         driver_pull_msg();
-        driver_get_qpos_qvel_qtor(qpos, qvel, qtor);
+        driver_get_qpos_qvel_qcur(qpos, qvel, qcur);
 
         float actual_pos = qpos[mid];
         float actual_vel = qvel[mid];
-        float actual_tor = qtor[mid];
+        float actual_cur = qcur[mid];
 
         // Console output every second
         if (step % (int)cfg->fs == 0) {
-            printf("  [%.1fs] Tgt=%.4f Pos=%.4f Vel=%.4f Tor=%.4f\n",
-                   t, target_phys, actual_pos, actual_vel, actual_tor);
+            printf("  [%.1fs] Tgt=%.4f Pos=%.4f Vel=%.4f Cur=%.4f\n",
+                   t, target_phys, actual_pos, actual_vel, actual_cur);
         }
 
         fprintf(logf, "%.4f,%.6f,%.6f,%.6f,%.6f\n",
                 get_time_s() - start_time,
-                target_phys, actual_pos, actual_vel, actual_tor);
+                target_phys, actual_pos, actual_vel, actual_cur);
 
         // Precise timing
         double loop_elapsed = get_time_s() - loop_start;
