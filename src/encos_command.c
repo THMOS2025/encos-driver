@@ -186,7 +186,7 @@ int uninitialize_motors() {
   return ret;
 }
 
-int scan_motors(const uint32_t timeout_us, uint8_t ids[], int max_ids) {
+int scan_motors(const uint32_t timeout_us) {
   uint8_t total_motors = 0, scanned[MOTOR_COUNT];
   memset(scanned, 0, sizeof(scanned));
   for (uint64_t t = 0; t < timeout_us; t += 10000) {
@@ -207,28 +207,13 @@ int scan_motors(const uint32_t timeout_us, uint8_t ids[], int max_ids) {
       }
     }
     if (total_motors >= MOTOR_COUNT) {
-      break;
+      log_info("Found %hu motors.", total_motors);
+      return 0;
     }
   }
-
-  if (total_motors < MOTOR_COUNT) {
-    log_warn("Scan timeout after %u us, only found %hu motors", timeout_us,
-             total_motors);
-  } else {
-    log_info("Found %hu motors.", total_motors);
-  }
-
-  // Populate IDs buffer if provided
-  if (ids != NULL) {
-    int count = 0;
-    for (int i = 0; i < MOTOR_COUNT && count < max_ids; i++) {
-      if (motor_to_channel[i] != 0xFF) {
-        ids[count++] = (uint8_t)i;
-      }
-    }
-  }
-
-  return total_motors;
+  log_warn("Scan timeout after %u us, only found %hu motors", timeout_us,
+           total_motors);
+  return -1; /* timeout */
 }
 
 int send_motor_set_zero(const uint8_t id) {

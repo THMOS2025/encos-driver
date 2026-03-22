@@ -3,11 +3,8 @@
  */
 
 #include <stdint.h>
-#ifndef LIB_API
-#define LIB_API
-#endif
 
-int driver_initialize(uint8_t ids[], int max_ids);
+int driver_initialize();
 int driver_uninitialize();
 int driver_set_motor_zero(const uint8_t id);
 int driver_send_qpos(const float qpos[]);
