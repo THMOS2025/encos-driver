@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "pybind11"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "encos_driver"
+version = "0.1.0"
+description = "Modern Python bindings for Encos Motor Driver"
+authors = [{name = "Your Name"}]
+requires-python = ">=3.7"
+
+[tool.setuptools]
+# This tells pip which files to actually include in the final package
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.so", "*.pyd"]

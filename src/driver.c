@@ -35,7 +35,13 @@ LIB_API int driver_initialize()
     log_info("Initializing driver");
     initialize_motors();
     scan_motors(1000000);
+    log_info("Sending default settings");
     send_motor_set_pos_range(QPOS_RANGE);
+    send_motor_set_tor_range(QTOR_RANGE);
+    send_motor_set_kp_range(QKP_RANGE);
+    send_motor_set_kd_range(QKD_RANGE);
+    usleep(100000);
+    driver_pull_msg();
 }
 
 LIB_API int driver_uninitialize()

@@ -15,10 +15,23 @@ const int NOT_RELATED_MSG = 2;
 const uint8_t       MAX_SEND_FAILED         = 100;    /* after 100 send failed, consider motor loss */
 const uint32_t      INITIAL_SCAN_MOTOR_TIME = 4;
 
-const int LOG_LEVEL         = LOG_INFO;
+const int LOG_LEVEL                         = LOG_ERROR;
 
 /* Limit qpos */
 const float QPOS_RANGE[2][MOTOR_COUNT] = \
+    {  {-1.0f, -1.0f, -4.0f, -1.0f, -1.0f, 
+        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
+        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
+        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f}, 
+       { 1.0f,  1.0f,  4.0f,  1.0f,  1.0f, 
+         1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
+         1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
+         1.0f,  1.0f,  1.0f,  1.0f,  1.0f} };
+
+/* forward torque 
+ *      Currently only use the middle
+ */
+const float QTOR_RANGE[2][MOTOR_COUNT] = \
     {  {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
         -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
         -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
@@ -28,27 +41,27 @@ const float QPOS_RANGE[2][MOTOR_COUNT] = \
          1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
          1.0f,  1.0f,  1.0f,  1.0f,  1.0f} };
 
-/*
-const float KP_RANGE[2][MOTOR_COUNT] = \
-    {  {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f}, 
+/* kpkd
+ *      Currently only use the maximum
+ */
+const float QKP_RANGE[2][MOTOR_COUNT] = \
+    {  {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, 
+       {50.0f, 50.0f, 400.0f, 50.0f, 50.0f, 
+        50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 
+        50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 
+        50.0f, 50.0f, 50.0f, 50.0f, 50.0f} };
+const float QKD_RANGE[2][MOTOR_COUNT] = \
+    {  {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, 
        { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
          1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
          1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
          1.0f,  1.0f,  1.0f,  1.0f,  1.0f} };
-
-const float KD_RANGE[2][MOTOR_COUNT] = \
-    {  {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 
-        -1.0f, -1.0f, -1.0f, -1.0f, -1.0f}, 
-       { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
-         1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
-         1.0f,  1.0f,  1.0f,  1.0f,  1.0f, 
-         1.0f,  1.0f,  1.0f,  1.0f,  1.0f} };
-*/
 
 /* Config command constants */
 const char* config_code_to_name[16] = {

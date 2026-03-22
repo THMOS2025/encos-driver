@@ -1,41 +1,49 @@
 #include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include "driver.h"
+#include <pybind11/stl.h>
+#include <vector>
+#include <stdexcept>
+
+extern "C" {
+    #include "driver.h"
+    #include "constant.h" // To get MOTOR_COUNT
+}
 
 namespace py = pybind11;
 
-// Helper for zero-copy memory mapping of global float arrays
-py::array_t<float> get_mapped_array(float* ptr) {
-    // We create a NumPy array that points directly to the C memory address
-    return py::array_t<float>(
-        { (size_t)MOTOR_COUNT }, // shape
-        { sizeof(float) },       // strides (1D float array)
-        ptr,                     // data pointer
-        py::capsule(ptr, [](void *f) {}) // dummy cleanup (don't free global memory)
-    );
-}
+PYBIND11_MODULE(encos_python, m) {
+    m.doc() = "Python bindings for Encos Motor Driver";
 
-// Optimized send_command using NumPy buffers
-void send_command_fast(py::array_t<float> pos, py::array_t<float> spd) {
-    auto r_pos = pos.unchecked<1>();
-    auto r_spd = spd.unchecked<1>();
-
-    if (r_pos.shape(0) != MOTOR_COUNT || r_spd.shape(0) != MOTOR_COUNT) {
-        throw std::runtime_error("Array size mismatch");
-    }
-
-    // Call the original C function using the direct pointers from NumPy
-    send_command(r_pos.data(0), r_spd.data(0));
-}
-
-PYBIND11_MODULE(motor_driver, m) {
-    m.def("initialize", &initialize_driver);
-    m.def("resolve", &resolve_command);
+    m.def("initialize", &driver_initialize, "Initialize the motor driver");
     
-    // Direct memory views (Zero-copy)
-    m.def("get_positions", []() { return get_mapped_array(read_joints_pos()); });
-    m.def("get_velocities", []() { return get_mapped_array(read_joints_vel()); });
+    m.def("uninitialize", &driver_uninitialize, "Uninitialize the motor driver");
 
-    // Fast command injection
-    m.def("send_command", &send_command_fast);
+    m.def("set_motor_zero", &driver_set_motor_zero, py::arg("id"), 
+          "Set the current position of a specific motor as zero");
+
+    m.def("pull_msg", &driver_pull_msg, "Pull messages from the CAN bus");
+
+    // Wrapper for sending positions: accepts a list/vector of floats
+    m.def("send_qpos", [](const std::vector<float>& pos) {
+        if (pos.size() != MOTOR_COUNT) {
+            throw std::runtime_error("Input size must match MOTOR_COUNT (" + std::to_string(MOTOR_COUNT) + ")");
+        }
+        return driver_send_qpos(pos.data());
+    }, "Send target positions to all motors");
+
+    // Wrapper for getting positions/velocities: returns a tuple of two lists
+    m.def("get_qpos_qvel", []() {
+        std::vector<float> qpos(MOTOR_COUNT);
+        std::vector<float> qvel(MOTOR_COUNT);
+        
+        int result = driver_get_qpos_qvel(qpos.data(), qvel.data());
+        
+        if (result < 0) {
+            throw std::runtime_error("Failed to get motor positions and velocities");
+        }
+
+        return std::make_tuple(qpos, qvel);
+    }, "Get current positions and velocities of all motors");
+
+    // Export the MOTOR_COUNT constant so Python knows the limit
+    m.attr("MOTOR_COUNT") = MOTOR_COUNT;
 }

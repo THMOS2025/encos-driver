@@ -15,6 +15,9 @@ extern const uint8_t                        MAX_SEND_FAILED;
 extern const int                            LOG_LEVEL;
 
 extern const float                          QPOS_RANGE[2][MOTOR_COUNT];
+extern const float                          QTOR_RANGE[2][MOTOR_COUNT];
+extern const float                          QKP_RANGE[2][MOTOR_COUNT];
+extern const float                          QKD_RANGE[2][MOTOR_COUNT];
 
 extern const char* config_code_to_name[16];
 extern const uint8_t CONFIG_ACCLERATION;

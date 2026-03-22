@@ -32,6 +32,7 @@ static uint8_t  motor_error[MOTOR_COUNT];
 static uint16_t desired_pos_raw[MOTOR_COUNT];
 static uint16_t current_pos_raw[MOTOR_COUNT];
 static uint16_t current_vel_raw[MOTOR_COUNT];
+static uint16_t current_cur_raw[MOTOR_COUNT];
 
 
 /* 
@@ -68,13 +69,13 @@ static int send_pos_control(const uint8_t channel, const uint8_t id)
 }
 
 static int send_range_config(const uint8_t channel, const uint8_t id, \
-        const uint8_t cfg, const uint16_t minn, const uint16_t maxn)
+        const uint8_t code, const uint16_t minn, const uint16_t maxn)
 {
     return write_can_message(channel, id, 6, \
             0x06ull << 61ull \
-            | 0x09ull << 48ull \
+            | (uint64_t)code << 48ull \
             | (uint64_t)minn << 32ull \
-            | (uint64_t)maxn << 32ull);
+            | (uint64_t)maxn << 16ull);
 }
 
 
@@ -134,6 +135,8 @@ static int parse_motor_status() /* We only use response class 1 */
     current_pos_raw[recv_id] = (uint16_t)((recv_buf >> 40ull) & 0xffffull);
     /* omega field : uint12 */
     current_vel_raw[recv_id] = (uint16_t)((recv_buf >> 28ull) & 0xfffull);
+    /* current field: uint12 */
+    current_cur_raw[recv_id] = (uint16_t)((recv_buf >> 16ull) & 0xfffull);
     return COMMAND_SUCCESS;
 }
 
@@ -217,7 +220,7 @@ int send_motors_pos(const float qpos[])
 {
     /* 0~65536 : -12.5rad~12.5rad */
     uint8_t ok_cnt = 0;
-    const float scale = 65536.0f / 2.0f;
+    const float scale = 65535.0f / 2.0f;
     const float offset = 1.0f;
 
     #pragma omp simd
@@ -251,7 +254,7 @@ int pull_motors_msg()
 
 int get_motors_pos_vel(float qpos[], float qvel[])
 {
-    const float scale = 2.0f / 65536.0f;
+    const float scale = 2.0f / 65535.0f;
     const float offset = 1.0f;
 
     #pragma omp simd
