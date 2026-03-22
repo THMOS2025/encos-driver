@@ -93,7 +93,7 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
     kp_arr[mid] = cfg->kp;
     kd_arr[mid] = cfg->kd;
     printf("[DEBUG] Setting Kp=%.4f Kd=%.4f for motor %d\n", cfg->kp, cfg->kd, mid);
-    printf("[DEBUG] QPOS_RANGE[1][%d] = %.4f (used for normalization)\n", mid, QPOS_RANGE[1][mid]);
+    printf("[DEBUG] QPOS_RANGE[1][%d] = %.4f\n", mid, QPOS_RANGE[1][mid]);
     printf("[DEBUG] QTOR_RANGE[1][%d] = %.4f\n", mid, QTOR_RANGE[1][mid]);
     printf("[DEBUG] QKP_RANGE[1][%d] = %.4f\n", mid, QKP_RANGE[1][mid]);
     printf("[DEBUG] QKD_RANGE[1][%d] = %.4f\n", mid, QKD_RANGE[1][mid]);
@@ -112,10 +112,10 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
     }
     fprintf(logf, "time,target_pos,actual_pos,actual_vel,actual_tor\n");
 
-    float target_pos_norm[MOTOR_COUNT] = {0};
-    float qpos_norm[MOTOR_COUNT] = {0};
-    float qvel_norm[MOTOR_COUNT] = {0};
-    float qtor_norm[MOTOR_COUNT] = {0};
+    float target_pos[MOTOR_COUNT] = {0};
+    float qpos[MOTOR_COUNT] = {0};
+    float qvel[MOTOR_COUNT] = {0};
+    float qtor[MOTOR_COUNT] = {0};
 
     double start_time = get_time_s();
 
@@ -127,23 +127,21 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
         float target_phys = generate_chirp(t, cfg->f_start, cfg->f_end,
                                            cfg->duration, amplitude);
 
-        // Normalize to [-1, 1] using QPOS_RANGE before sending
-        target_pos_norm[mid] = target_phys / QPOS_RANGE[1][mid];
+        target_pos[mid] = target_phys;
 
-        // Debug: print first few steps to see normalized values
+        // Debug: print first few steps
         if (step < 5) {
-            printf("[DEBUG] step=%d t=%.4f target_phys=%.6f target_norm=%.6f\n",
-                   step, t, target_phys, target_pos_norm[mid]);
+            printf("[DEBUG] step=%d t=%.4f target_phys=%.6f\n",
+                   step, t, target_phys);
         }
 
-        driver_send_qpos(target_pos_norm);
+        driver_send_qpos(target_pos);
         driver_pull_msg();
-        driver_get_qpos_qvel_qtor(qpos_norm, qvel_norm, qtor_norm);
+        driver_get_qpos_qvel_qtor(qpos, qvel, qtor);
 
-        // Convert normalized readings back to physical values
-        float actual_pos = qpos_norm[mid] * QPOS_RANGE[1][mid];
-        float actual_vel = qvel_norm[mid] * QPOS_RANGE[1][mid];
-        float actual_tor = qtor_norm[mid] * QTOR_RANGE[1][mid];
+        float actual_pos = qpos[mid];
+        float actual_vel = qvel[mid];
+        float actual_tor = qtor[mid];
 
         // Console output every second
         if (step % (int)cfg->fs == 0) {
@@ -166,8 +164,8 @@ int run_chirp_test(const test_config_t *cfg, int test_index) {
     printf("  -> Saved to %s\n", filename);
 
     // Rest between tests: return to zero and wait
-    memset(target_pos_norm, 0, sizeof(target_pos_norm));
-    driver_send_qpos(target_pos_norm);
+    memset(target_pos, 0, sizeof(target_pos));
+    driver_send_qpos(target_pos);
     sleep(2);
 
     return 0;
