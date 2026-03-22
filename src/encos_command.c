@@ -273,12 +273,19 @@ int send_motors_pos(const float qpos[]) {
 int pull_motors_msg() {
   for (uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
     while (read_next_msg(i) == 0) {
-      if (parse_motor_status() <= 0)
+      if (parse_motor_status() <= 0) {
+        printf("Failed to parse motor status\n");
         continue;
-      if (parse_motor_id() <= 0)
+      }
+      if (parse_motor_id() <= 0) {
+        printf("Failed to parse motor id\n");
         continue;
-      if (parse_motor_set_range() <= 0)
+      }
+      if (parse_motor_set_range() <= 0) {
+        printf("Failed to parse motor set range\n");
         continue;
+      }
+      continue;
     }
   }
 }
