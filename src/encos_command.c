@@ -257,8 +257,6 @@ int send_motors_pos(const float qpos[]) {
     if (send_pos_control(i, j)) {
       printf("Failed to send pos control to motor %hu\n", j);
       continue;
-    } else {
-      printf("Send pos control to motor %hu success\n", j);
     }
     ++ok_cnt;
   }
