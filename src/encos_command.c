@@ -30,6 +30,8 @@ static uint8_t  channel_available[CHANNEL_COUNT];
 static uint8_t  motor_to_channel[MOTOR_COUNT];
 static uint8_t  motor_error[MOTOR_COUNT];
 static uint16_t desired_pos_raw[MOTOR_COUNT];
+static uint16_t desired_kp_raw[MOTOR_COUNT];
+static uint16_t desired_kd_raw[MOTOR_COUNT];
 static uint16_t current_pos_raw[MOTOR_COUNT];
 static uint16_t current_vel_raw[MOTOR_COUNT];
 static uint16_t current_tor_raw[MOTOR_COUNT];
@@ -63,9 +65,11 @@ static int send_set_zero(const uint8_t channel, const uint8_t id)
 
 static int send_pos_control(const uint8_t channel, const uint8_t id)
 {
-    return write_can_message(channel, id, 8, 0x0ffffull << 40ull \
+    return write_can_message(channel, id, 8, 
+                ((uint64_t)(desired_kp_raw[id]) << 40ull) \
                 | ((uint64_t)(desired_pos_raw[id]) << 24ull) \
-                | 0x7ff7ffull /* 7ff stands for zero in 0-4095 range */);
+                | ((uint64_t)(desired_kd_raw[id]) << 12ull) \
+                | 0x7ffull /* torque ff = zero */);
 }
 
 static int send_range_config(const uint8_t channel, const uint8_t id, \
@@ -161,6 +165,11 @@ int initialize_motors()
     memset(current_pos_raw, 0, sizeof(current_pos_raw));
     memset(current_vel_raw, 0, sizeof(current_vel_raw));
     memset(current_tor_raw, 0, sizeof(current_tor_raw));
+    /* Default kp = max, kd = zero (original hardcoded values) */
+    for(uint8_t i = 0; i < MOTOR_COUNT; ++i) {
+        desired_kp_raw[i] = 0xffff;
+        desired_kd_raw[i] = 0x7ff;
+    }
     for(uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
         if(initialize_can(i) < 0) continue;
         channel_available[i] = 1; 
@@ -321,4 +330,38 @@ int send_motor_set_kp_range(const float qkp_range[2][MOTOR_COUNT]) {
 }
 int send_motor_set_kd_range(const float qkd_range[2][MOTOR_COUNT]) {
     return send_motor_set_range(qkd_range, kd_range, 1.0f, CONFIG_KD_RANGE);
+}
+
+int set_motors_kpkd(const float kp[], const float kd[])
+{
+    for(uint8_t j = 0; j < MOTOR_COUNT; ++j) {
+        /* Kp: physical -> 16-bit raw, linearly mapped to kp_range
+         * kp_range stores raw range values (phys * scaler=1.0) 
+         * kp_range[0][j] = raw_min, kp_range[1][j] = raw_max 
+         * Since scaler=1.0: kp_range[0][j] = QKP_RANGE[0][j], kp_range[1][j] = QKP_RANGE[1][j]
+         * raw = (kp - range_min) / (range_max - range_min) * 65535 */
+        float kp_min = (float)kp_range[0][j];
+        float kp_max = (float)kp_range[1][j];
+        if(kp_max > kp_min) {
+            float norm = (kp[j] - kp_min) / (kp_max - kp_min);
+            if(norm < 0.0f) norm = 0.0f;
+            if(norm > 1.0f) norm = 1.0f;
+            desired_kp_raw[j] = (uint16_t)(norm * 65535.0f);
+        } else {
+            desired_kp_raw[j] = 0;
+        }
+
+        /* Kd: physical -> 12-bit raw (0-4095) */
+        float kd_min = (float)kd_range[0][j];
+        float kd_max = (float)kd_range[1][j];
+        if(kd_max > kd_min) {
+            float norm = (kd[j] - kd_min) / (kd_max - kd_min);
+            if(norm < 0.0f) norm = 0.0f;
+            if(norm > 1.0f) norm = 1.0f;
+            desired_kd_raw[j] = (uint16_t)(norm * 4095.0f);
+        } else {
+            desired_kd_raw[j] = 0;
+        }
+    }
+    return 0;
 }

@@ -64,6 +64,11 @@ LIB_API int driver_send_qpos(const float qpos[])
     return send_motors_pos(qpos);
 }
 
+LIB_API int driver_set_kpkd(const float kp[], const float kd[])
+{
+    return set_motors_kpkd(kp, kd);
+}
+
 LIB_API int driver_pull_msg()
 {
     return pull_motors_msg();

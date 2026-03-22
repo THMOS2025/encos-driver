@@ -16,6 +16,7 @@ int scan_motors(const uint32_t timeout_us);
 
 /* Core */
 int send_motors_pos(const float qpos[MOTOR_COUNT]);
+int set_motors_kpkd(const float kp[MOTOR_COUNT], const float kd[MOTOR_COUNT]);
 int pull_motors_msg();
 int get_motors_pos_vel(float qpos[MOTOR_COUNT], float qvel[MOTOR_COUNT]);
 int get_motors_pos_vel_tor(float qpos[MOTOR_COUNT], float qvel[MOTOR_COUNT], float qtor[MOTOR_COUNT]);
