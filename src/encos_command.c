@@ -274,7 +274,7 @@ int pull_motors_msg() {
   for (uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
     while (read_next_msg(i) == 0) {
       if (parse_motor_status() <= 0) {
-        printf("Failed to parse motor status\n");
+        // printf("Failed to parse motor status\n");
         continue;
       }
       if (parse_motor_id() <= 0) {
