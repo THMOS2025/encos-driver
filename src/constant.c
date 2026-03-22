@@ -3,7 +3,6 @@
 #include "constant.h"
 #include "log.h"
 
-
 const float PAI = 3.1415926535897;
 
 /* return definitions */
@@ -20,24 +19,22 @@ const uint32_t INITIAL_SCAN_MOTOR_TIME = 4;
 const int LOG_LEVEL = LOG_ERROR;
 
 /* Limit qpos: physical range in rad. Sent as int16 * scaler(100) to motor. */
-const float QPOS_RANGE[2][MOTOR_COUNT] = \
-    {  {-12.5f, -12.5f, -12.5f, -12.5f, -12.5f, 
-        -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, 
-        -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, 
-        -12.5f, -12.5f, -12.5f, -12.5f, -12.5f}, 
-       { 12.5f,  12.5f,  12.5f,  12.5f,  12.5f, 
-         12.5f,  12.5f,  12.5f,  12.5f,  12.5f, 
-         12.5f,  12.5f,  12.5f,  12.5f,  12.5f, 
-         12.5f,  12.5f,  12.5f,  12.5f,  12.5f} };
+const float QPOS_RANGE[2][MOTOR_COUNT] = {
+    {-12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f,
+     -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f,
+     -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f},
+    {12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f,
+     12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f}};
 
 /* forward torque
  *      Currently only use the middle
  */
 const float QTOR_RANGE[2][MOTOR_COUNT] = {
-    {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
-     -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-     1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f}};
+    {-90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f,
+     -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f,
+     -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f},
+    {90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f,
+     90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f}};
 
 /* kpkd
  *      Currently only use the maximum
