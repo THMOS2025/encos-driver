@@ -1,5 +1,5 @@
-#include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 #include <vector>
 #include <stdexcept>
 
@@ -8,7 +8,19 @@ extern "C" {
     #include "constant.h" // To get MOTOR_COUNT
 }
 
+
 namespace py = pybind11;
+
+// Helper for zero-copy memory mapping of global float arrays
+static py::array_t<float> get_mapped_array(float* ptr) {
+    if (!ptr) return py::array_t<float>();
+    return py::array_t<float>(
+        { (size_t)MOTOR_COUNT }, // shape
+        { sizeof(float) },       // strides
+        ptr,                     // data pointer
+        py::capsule(ptr, [](void *f) {}) // dummy cleanup
+    );
+}
 
 PYBIND11_MODULE(encos_python, m) {
     m.doc() = "Python bindings for Encos Motor Driver";

@@ -30,10 +30,15 @@ The project is structured into three main layers:
 - **CMake** (v3.12+): Used for building the project.
 - **GCC/Clang**: Standard C17 / CXX17 compilation.
 - **sudo/iproot privileges**: The script invokes `sudo ip link set ...` internally to configure CAN interfaces, so the executing user needs relevant privileges.
+- **Python (Optional)**: If using Python bindings, install `pybind11` and `numpy`.
+  ```bash
+  pip install pybind11 numpy
+  ```
 
 ## Building
 
-To build the driver:
+### 1. Build C Library and Executables
+To build the standard driver:
 
 ```bash
 cd encos-driver
@@ -47,7 +52,36 @@ This will produce:
 - `encos_driver_lib`: A shared library exposing the API.
 - `encos_driver`: A reference executable based on `src/main.c`.
 
-## API Usage
+### 2. Build Python Bindings
+If you want to use the driver from Python:
+
+```bash
+cd build
+cmake -DBUILD_PYTHON_BINDINGS=ON ..
+make
+```
+This will produce `encos_python.so` (or similar) in the build directory.
+
+## Testing
+
+### C Version
+I have provided a simple C test script in `scripts/motor_test.c`. To compile and run it:
+
+```bash
+gcc scripts/motor_test.c -Iinclude -Lbuild -lencos_driver_lib -lm -o motor_test
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/build
+./motor_test
+```
+
+### Python Version
+Use the provided `scripts/sysid_chirp.py` or a simple script:
+
+```python
+import encos_python
+encos_python.initialize()
+# ... your logic ...
+encos_python.uninitialize()
+```
 
 Include `"driver.h"` in your C/C++ application.
 
