@@ -7,12 +7,10 @@
 #include <time.h>
 #include <unistd.h>
 
-
 #include "constant.h"
 #include "encos_command.h"
 #include "log.h"
 #include "socket_can_driver.h"
-
 
 static uint8_t recv_ch;
 static uint64_t recv_buf;
@@ -235,23 +233,30 @@ int send_motors_pos(const float qpos[]) {
   for (uint8_t j = 0; j < MOTOR_COUNT; ++j) {
     float pos_clamped = qpos[j];
     // Apply soft limits from QPOS_RANGE
-    if (pos_clamped < QPOS_RANGE[0][j]) pos_clamped = QPOS_RANGE[0][j];
-    if (pos_clamped > QPOS_RANGE[1][j]) pos_clamped = QPOS_RANGE[1][j];
-    
+    if (pos_clamped < QPOS_RANGE[0][j])
+      pos_clamped = QPOS_RANGE[0][j];
+    if (pos_clamped > QPOS_RANGE[1][j])
+      pos_clamped = QPOS_RANGE[1][j];
+
     // Scale according to protocol
     float raw_pos = (pos_clamped + offset) * scale;
-    if (raw_pos < 0.0f) raw_pos = 0.0f;
-    if (raw_pos > 65535.0f) raw_pos = 65535.0f;
+    if (raw_pos < 0.0f)
+      raw_pos = 0.0f;
+    if (raw_pos > 65535.0f)
+      raw_pos = 65535.0f;
     desired_pos_raw[j] = (uint16_t)raw_pos;
   }
 
   for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
     if ((i = motor_to_channel[j]) == 0xFF)
-      continue;
+      log_warn("Motor %hu not found", j);
+    continue;
     if (channel_available[i] == 0)
-      continue;
+      log_warn("Channel %hu not available", i);
+    continue;
     if (send_pos_control(i, j))
-      continue;
+      log_warn("Failed to send pos control to motor %hu", j);
+    continue;
     ++ok_cnt;
   }
 
@@ -296,22 +301,23 @@ int get_motors_pos_vel(float qpos[], float qvel[]) {
 int get_motors_pos_vel_cur(float qpos[], float qvel[], float qcur[]) {
   /* Protocol POS Range: -12.5rad to 12.5rad -> 0 to 65535 */
   /* Protocol SPD Range: -18rad/s to 18rad/s -> 0 to 4095 */
-  /* Protocol TOR/CUR Range: configured dynamically via QTOR_RANGE (e.g., 30 for 4310, 60 for 6408) */
+  /* Protocol TOR/CUR Range: configured dynamically via QTOR_RANGE (e.g., 30 for
+   * 4310, 60 for 6408) */
   const float pos_scale = 25.0f / 65535.0f;
   const float pos_offset = 12.5f;
 
   const float vel_scale = 36.0f / 4095.0f;
   const float vel_offset = 18.0f;
-  
+
 #pragma omp simd
   for (uint8_t j = 0; j < MOTOR_COUNT; ++j) {
     qpos[j] = (float)(current_pos_raw[j]) * pos_scale - pos_offset;
     qvel[j] = (float)(current_vel_raw[j]) * vel_scale - vel_offset;
-    
+
     // Dynamically scale mapping based on motor's configured torque range
-    float cur_max = QTOR_RANGE[1][j]; 
+    float cur_max = QTOR_RANGE[1][j];
     float cur_scale = (cur_max * 2.0f) / 4095.0f;
-    qcur[j] = (float)(current_cur_raw[j]) * cur_scale - cur_max; 
+    qcur[j] = (float)(current_cur_raw[j]) * cur_scale - cur_max;
   }
 
   return 0;
@@ -366,32 +372,41 @@ int set_motors_kpkd(const float kp[], const float kd[]) {
   for (uint8_t j = 0; j < MOTOR_COUNT; ++j) {
     // 1. Soft limits protection (QKP_RANGE / QKD_RANGE from constant.c)
     float kp_clamped = kp[j];
-    if (kp_clamped < QKP_RANGE[0][j]) kp_clamped = QKP_RANGE[0][j];
-    if (kp_clamped > QKP_RANGE[1][j]) kp_clamped = QKP_RANGE[1][j];
+    if (kp_clamped < QKP_RANGE[0][j])
+      kp_clamped = QKP_RANGE[0][j];
+    if (kp_clamped > QKP_RANGE[1][j])
+      kp_clamped = QKP_RANGE[1][j];
 
     // 2. Protocol conversion (0~500 -> 0~4095)
     float kp_norm = kp_clamped / 500.0f;
-    if (kp_norm < 0.0f) kp_norm = 0.0f;
-    if (kp_norm > 1.0f) kp_norm = 1.0f;
+    if (kp_norm < 0.0f)
+      kp_norm = 0.0f;
+    if (kp_norm > 1.0f)
+      kp_norm = 1.0f;
     desired_kp_raw[j] = (uint16_t)(kp_norm * 4095.0f); /* KP is uint12 */
 
     // 1. Soft limits protection for KD
     float kd_clamped = kd[j];
-    if (kd_clamped < QKD_RANGE[0][j]) kd_clamped = QKD_RANGE[0][j];
-    if (kd_clamped > QKD_RANGE[1][j]) kd_clamped = QKD_RANGE[1][j];
+    if (kd_clamped < QKD_RANGE[0][j])
+      kd_clamped = QKD_RANGE[0][j];
+    if (kd_clamped > QKD_RANGE[1][j])
+      kd_clamped = QKD_RANGE[1][j];
 
     // 2. Protocol conversion (0~5 -> 0~511)
     float kd_norm = kd_clamped / 5.0f;
-    if (kd_norm < 0.0f) kd_norm = 0.0f;
-    if (kd_norm > 1.0f) kd_norm = 1.0f;
+    if (kd_norm < 0.0f)
+      kd_norm = 0.0f;
+    if (kd_norm > 1.0f)
+      kd_norm = 1.0f;
     desired_kd_raw[j] = (uint16_t)(kd_norm * 511.0f); /* KD is uint9 */
 
     /* Debug: print non-zero motors */
     if (kp[j] != 0.0f || kd[j] != 0.0f) {
-      printf("[DEBUG] motor %d: kp=%.4f kd=%.4f | soft_limits=[%.1f,%.1f], [%.1f,%.1f] "
+      printf("[DEBUG] motor %d: kp=%.4f kd=%.4f | soft_limits=[%.1f,%.1f], "
+             "[%.1f,%.1f] "
              "| kp_raw=%u kd_raw=%u\n",
-             j, kp[j], kd[j], QKP_RANGE[0][j], QKP_RANGE[1][j], QKD_RANGE[0][j], QKD_RANGE[1][j], 
-             desired_kp_raw[j], desired_kd_raw[j]);
+             j, kp[j], kd[j], QKP_RANGE[0][j], QKP_RANGE[1][j], QKD_RANGE[0][j],
+             QKD_RANGE[1][j], desired_kp_raw[j], desired_kd_raw[j]);
     }
   }
   return 0;
