@@ -249,15 +249,15 @@ int send_motors_pos(const float qpos[]) {
 
   for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
     if ((i = motor_to_channel[j]) == 0xFF) {
-      log_warn("Motor %hu not found", j);
+      printf("Motor %hu not found\n", j);
       continue;
     }
     if (channel_available[i] == 0) {
-      log_warn("Channel %hu not available", i);
+      printf("Channel %hu not available\n", i);
       continue;
     }
     if (send_pos_control(i, j)) {
-      log_warn("Failed to send pos control to motor %hu", j);
+      printf("Failed to send pos control to motor %hu\n", j);
       continue;
     }
     ++ok_cnt;
