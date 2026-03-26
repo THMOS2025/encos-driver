@@ -84,6 +84,14 @@ static int send_range_config(const uint8_t channel, const uint8_t id,
                                (uint64_t)maxn << 16ull);
 }
 
+static int send_motor_query(const uint8_t channel, const uint8_t id, const uint8_t code)
+{
+    log_debug("Send_motor_query: channel=%hu id=%hu code=%hu", channel, id, code);
+    return write_can_message(channel, id, 2, 
+            (uint64_t)0x07ull << 61ull
+            | (uint64_t)code << 48ull);
+}
+
 /*
  * Parse response
  */
@@ -143,13 +151,27 @@ static int parse_motor_status() /* We only use response class 1 */
   return COMMAND_SUCCESS;
 }
 
-static int parse_motor_set_range() {
+static int parse_motor_query_response() /* Response type 5 */
+{
+    if((recv_buf >> 61ull) != 0x05ull) return NOT_RELATED_MSG;
+    uint8_t err_no      = (uint8_t)((recv_buf >> 56ull) & 0x1full);
+    uint8_t query_code  = (uint8_t)((recv_buf >> 48ull) & 0xffull);
+    uint16_t data1      = (uint16_t)((recv_buf >> 32ull) & 0xffffull);
+    uint16_t data2      = (uint16_t)((recv_buf >> 32ull) & 0xffffull);
+    log_info("Recv response 0x05: recv_len = %hu err_no = %hu data = %hu %hu",\
+            recv_len, err_no, query_code, data1, data2);
+}
+
+static int parse_motor_set_range()
+{
   if (recv_len != 7 || recv_id >= MOTOR_COUNT ||
       (recv_buf >> 48ull) != 0xfffeull)
     return NOT_RELATED_MSG; /* not related */
   log_info("Config %s success on motor %hu",
            config_code_to_name[(recv_buf >> 40ull) & 0xffull], recv_id);
 }
+
+
 
 /*
  * Exposed APIs
@@ -249,14 +271,12 @@ int send_motors_pos(const float qpos[]) {
 
   for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
     if ((i = motor_to_channel[j]) == 0xFF) {
-      // printf("Motor %hu not found", j);
       continue;
     }
     if (channel_available[i] == 0) {
       continue;
     }
     if (send_pos_control(i, j)) {
-      printf("Failed to send pos control to motor %hu\n", j);
       continue;
     }
     ++ok_cnt;
@@ -272,18 +292,10 @@ int send_motors_pos(const float qpos[]) {
 int pull_motors_msg() {
   for (uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
     while (read_next_msg(i) == 0) {
-      if (parse_motor_status() <= 0) {
-        // printf("Failed to parse motor status\n");
-        continue;
-      }
-      if (parse_motor_id() <= 0) {
-        printf("Failed to parse motor id\n");
-        continue;
-      }
-      if (parse_motor_set_range() <= 0) {
-        printf("Failed to parse motor set range\n");
-        continue;
-      }
+      if (parse_motor_status() <= 0)    continue;
+      if (parse_motor_id() <= 0)        continue;
+      if (parse_motor_set_range() <= 0) continue;
+      if (parse_motor_query_response() <= 0) continue;
       continue;
     }
   }
@@ -357,6 +369,19 @@ static int send_motor_set_range(const float cfg_range[2][MOTOR_COUNT],
   }
 }
 
+int send_motors_query(const uint8_t code) {
+    int ret = 0;
+    for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
+        log_info("FUCK");
+        if ((i = motor_to_channel[j]) == 0xFF)
+            continue;
+        if (channel_available[i] == 0)
+            continue;
+        ret = send_motor_query(i, j, code);
+    }
+    return ret;
+}
+
 int send_motor_set_pos_range(const float qpos_range[2][MOTOR_COUNT]) {
   return send_motor_set_range(qpos_range, pos_range, 100.0f, CONFIG_POS_RANGE);
 }
@@ -374,49 +399,4 @@ int send_motor_set_kp_range(const float qkp_range[2][MOTOR_COUNT]) {
 }
 int send_motor_set_kd_range(const float qkd_range[2][MOTOR_COUNT]) {
   return send_motor_set_range(qkd_range, kd_range, 1.0f, CONFIG_KD_RANGE);
-}
-
-int set_motors_kpkd(const float kp[], const float kd[]) {
-  /* Protocol bounds for KP is 0~500, KD is 0~5 */
-  for (uint8_t j = 0; j < MOTOR_COUNT; ++j) {
-    // 1. Soft limits protection (QKP_RANGE / QKD_RANGE from constant.c)
-    float kp_clamped = kp[j];
-    if (kp_clamped < QKP_RANGE[0][j])
-      kp_clamped = QKP_RANGE[0][j];
-    if (kp_clamped > QKP_RANGE[1][j])
-      kp_clamped = QKP_RANGE[1][j];
-
-    // 2. Protocol conversion (0~500 -> 0~4095)
-    float kp_norm = kp_clamped / 500.0f;
-    if (kp_norm < 0.0f)
-      kp_norm = 0.0f;
-    if (kp_norm > 1.0f)
-      kp_norm = 1.0f;
-    desired_kp_raw[j] = (uint16_t)(kp_norm * 4095.0f); /* KP is uint12 */
-
-    // 1. Soft limits protection for KD
-    float kd_clamped = kd[j];
-    if (kd_clamped < QKD_RANGE[0][j])
-      kd_clamped = QKD_RANGE[0][j];
-    if (kd_clamped > QKD_RANGE[1][j])
-      kd_clamped = QKD_RANGE[1][j];
-
-    // 2. Protocol conversion (0~5 -> 0~511)
-    float kd_norm = kd_clamped / 5.0f;
-    if (kd_norm < 0.0f)
-      kd_norm = 0.0f;
-    if (kd_norm > 1.0f)
-      kd_norm = 1.0f;
-    desired_kd_raw[j] = (uint16_t)(kd_norm * 511.0f); /* KD is uint9 */
-
-    /* Debug: print non-zero motors */
-    if (kp[j] != 0.0f || kd[j] != 0.0f) {
-      printf("[DEBUG] motor %d: kp=%.4f kd=%.4f | soft_limits=[%.1f,%.1f], "
-             "[%.1f,%.1f] "
-             "| kp_raw=%u kd_raw=%u\n",
-             j, kp[j], kd[j], QKP_RANGE[0][j], QKP_RANGE[1][j], QKD_RANGE[0][j],
-             QKD_RANGE[1][j], desired_kp_raw[j], desired_kd_raw[j]);
-    }
-  }
-  return 0;
 }

@@ -15,9 +15,13 @@ int main(int argc, char **argv)
     float current_qpos[20], current_qvel[20];
 
     driver_initialize();
-    driver_set_motor_zero(2);
+    // driver_set_motor_zero(2);
+    printf("==================================\n");
+    driver_send_query(23);
     usleep(1000000);
     driver_pull_msg();
+    
+    return 0;
     printf("ts, cmdpos, curpos, curspd\n");
     for(int i = 0; i < 10000; ++i) {
         float t = i * 0.001;
