@@ -3,14 +3,14 @@
  */
 
 #if defined(_WIN32) || defined(_WIN64)
-    #error("Windows is not supported")
+#error("Windows is not supported")
 #else
-    // Linux/Unix logic (GCC/Clang)
-    #if __GNUC__ >= 4
-        #define LIB_API __attribute__((visibility("default")))
-    #else
-        #define LIB_API
-    #endif
+// Linux/Unix logic (GCC/Clang)
+#if __GNUC__ >= 4
+#define LIB_API __attribute__((visibility("default")))
+#else
+#define LIB_API
+#endif
 #endif
 
 #include <time.h>
@@ -42,9 +42,11 @@ LIB_API int driver_initialize()
     scan_motors(1000000);
     log_info("Sending default settings");
     send_motor_set_pos_range(QPOS_RANGE);
-    send_motor_set_tor_range(QTOR_RANGE);
-    send_motor_set_kp_range(QKP_RANGE);
-    send_motor_set_kd_range(QKD_RANGE);
+    /* 
+       send_motor_set_tor_range(QTOR_RANGE);
+       send_motor_set_kp_range(QKP_RANGE);
+       send_motor_set_kd_range(QKD_RANGE);
+       */
     usleep(100000);
     driver_pull_msg();
 }

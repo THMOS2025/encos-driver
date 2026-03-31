@@ -16,11 +16,17 @@ int main(int argc, char **argv)
 
     driver_initialize();
     // driver_set_motor_zero(2);
-    printf("==================================\n");
+    usleep(1000000);
+    driver_pull_msg();
+
     driver_send_query(23);
     usleep(1000000);
     driver_pull_msg();
-    
+
+    driver_send_query(1);
+    usleep(1000000);
+    driver_pull_msg();
+
     return 0;
     printf("ts, cmdpos, curpos, curspd\n");
     for(int i = 0; i < 10000; ++i) {
