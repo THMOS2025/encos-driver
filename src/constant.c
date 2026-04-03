@@ -16,40 +16,53 @@ const uint8_t MAX_SEND_FAILED =
     100; /* after 100 send failed, consider motor loss */
 const uint32_t INITIAL_SCAN_MOTOR_TIME = 4;
 
-const int LOG_LEVEL = LOG_TRACE;
+const int LOG_LEVEL = LOG_DEBUG;
 
 /* Limit qpos: physical range in rad. Sent as int16 * scaler(100) to motor. */
 const float QPOS_RANGE[2][MOTOR_COUNT] = {
-    {-12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f,
+    {   -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f,
         -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f,
         -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f},
-    {12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f,
-        12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f, 12.5f}};
+    {    12.5f,  12.5f,  12.5f,  12.5f,  12.5f,  12.5f,  12.5f,
+         12.5f,  12.5f,  12.5f,  12.5f,  12.5f,  12.5f,  12.5f, 
+         12.5f,  12.5f,  12.5f,  12.5f,  12.5f,  12.5f}};
 
 /* forward torque
  *      Currently only use the middle
  */
 const float QTOR_RANGE[2][MOTOR_COUNT] = {
-    {-90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f,
+    {   -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f,
         -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f,
         -90.0f, -90.0f, -90.0f, -90.0f, -90.0f, -90.0f},
-    {90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f,
-        90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f, 90.0f}};
+    {    90.0f,  90.0f,  90.0f,  90.0f,  90.0f,  90.0f,  90.0f,
+         90.0f,  90.0f,  90.0f,  90.0f,  90.0f,  90.0f,  90.0f, 
+         90.0f,  90.0f,  90.0f,  90.0f,  90.0f,  90.0f}};
 
 /* kpkd
  *      Currently only use the maximum
  */
 const float QKP_RANGE[2][MOTOR_COUNT] = {
-    {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    {100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f,
-        100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f,
-        100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f}};
+    {  0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,
+       0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f},
+    {100.0f, 500.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f,
+     100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f}
+};
 const float QKD_RANGE[2][MOTOR_COUNT] = {
-    {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f},
-    {10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f,
-        10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f}};
+    { 0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,
+      0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f},
+    {10.0f,  1.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f,
+     10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f}
+};
+
+
+/* enable kt
+ *      Whether to use auto kt
+ */
+const bool ENABLE_KT[MOTOR_COUNT] = {
+    true, true, true, true, true, true, true, 
+    true, true, true, true, true, true, true, 
+    true, true, true, true, true, true
+};
 
 /* Config command constants */
 const char *config_code_to_name[16] = {

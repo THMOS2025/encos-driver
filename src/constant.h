@@ -2,6 +2,7 @@
 #define _H_DEFINE
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define MOTOR_COUNT                         (20)
 #define CHANNEL_COUNT                       (4)
@@ -28,5 +29,6 @@ extern const uint8_t CONFIG_POS_RANGE;
 extern const uint8_t CONFIG_VEL_RANGE;
 extern const uint8_t CONFIG_TOR_RANGE;
 extern const uint8_t CONFIG_CUR_RANGE;
+extern const bool    ENABLE_KT[MOTOR_COUNT];
 
 #endif 

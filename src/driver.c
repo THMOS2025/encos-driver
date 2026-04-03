@@ -26,13 +26,6 @@
 #include "encos_command.h"
 #include "log.h"
 
-static float qpos[MOTOR_COUNT];
-static float qvel[MOTOR_COUNT];
-static float qcur[MOTOR_COUNT];
-
-LIB_API float* read_joints_pos() { return qpos; }
-LIB_API float* read_joints_vel() { return qvel; }
-LIB_API float* read_joints_cur() { return qcur; }
 
 LIB_API int driver_initialize()
 {
@@ -41,12 +34,11 @@ LIB_API int driver_initialize()
     initialize_motors();
     scan_motors(1000000);
     log_info("Sending default settings");
-    send_motor_set_pos_range(QPOS_RANGE);
-    /* 
-       send_motor_set_tor_range(QTOR_RANGE);
-       send_motor_set_kp_range(QKP_RANGE);
-       send_motor_set_kd_range(QKD_RANGE);
-       */
+    send_motors_set_pos_range(QPOS_RANGE);
+    send_motors_set_tor_range(QTOR_RANGE);
+    send_motors_set_kp_range(QKP_RANGE);
+    send_motors_set_kd_range(QKD_RANGE);
+    send_motors_enable_kt(ENABLE_KT);
     usleep(100000);
     driver_pull_msg();
 }
@@ -61,24 +53,24 @@ LIB_API int driver_set_motor_zero(const uint8_t id)
     return send_motor_set_zero(id);
 }
 
-LIB_API int driver_send_qpos(const float qpos[])
-{
-    return send_motors_pos(qpos);
-}
-
 LIB_API int driver_pull_msg()
 {
     return pull_motors_msg();
 }
 
+LIB_API int driver_push_msg()
+{
+    return push_motors_msg();
+}
+
+LIB_API int driver_set_qpos(const float qpos[])
+{
+    return set_motors_pos(qpos);
+}
+
 LIB_API int driver_get_qpos_qvel(float qpos[], float qvel[])
 {
     return get_motors_pos_vel(qpos, qvel);
-}
-
-LIB_API int driver_get_qpos_qvel_qcur(float qpos[], float qvel[], float qcur[])
-{
-    return get_motors_pos_vel_cur(qpos, qvel, qcur);
 }
 
 LIB_API int driver_send_query(const uint8_t code)
