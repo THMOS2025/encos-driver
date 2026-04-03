@@ -9,32 +9,43 @@
 
 #include "driver.h"
 
+const uint8_t id = 1;
+
 int main(int argc, char **argv)
 {
     float desired_qpos[20] = {1.0, 1.0};
     float current_qpos[20], current_qvel[20];
 
     driver_initialize();
-    driver_set_motor_zero(2);
-    usleep(1000000);
-    driver_pull_msg();
+    // driver_set_motor_zero(1);
+
+    
     printf("ts, cmdpos, curpos, curspd\n");
     for(int i = 0; i < 10000; ++i) {
         float t = i * 0.001;
-        for(int j = 0; j < 20; ++j)
-            desired_qpos[j] = sin(2.0 * t * t);
-        driver_send_qpos(desired_qpos);
+        desired_qpos[id] = 0.05 * sin(0.5 * t * t);
+        driver_set_qpos(desired_qpos);
+        driver_push_msg();
         usleep(1000);
         driver_pull_msg();
         driver_get_qpos_qvel(current_qpos, current_qvel);
-        printf("%.3lf,%0.3lf,%0.3lf,%0.3lf\n", t, 
-                desired_qpos[2], 
-                current_qpos[2],
-                current_qvel[2]);
+        if(i > 100)
+            printf("%.3lf,%0.3lf,%0.3lf,%0.3lf\n", t, 
+                    desired_qpos[id] * 12.5f, 
+                    current_qpos[id] * 12.5f,
+                    current_qvel[id] * 12.5f);
     }
-    driver_pull_msg();
-    driver_get_qpos_qvel(current_qpos, current_qvel);
-    printf("cmd: %0.3lf cur: %0.3lf\n", desired_qpos[3], current_qpos[3]);
+    
+    for(int i = 0; i < 100; ++i) {
+        desired_qpos[id] *= 0.9;
+        driver_set_qpos(desired_qpos);
+        driver_push_msg();
+        usleep(10000);
+        driver_pull_msg();
+    }
+    // driver_get_qpos_qvel(current_qpos, current_qvel);
+    // printf("%0.3lf,%0.3lf,%0.3lf\n", desired_qpos[id], current_qpos[id], current_qvel[id]); 
+
     driver_uninitialize();
     return 0;
 }

@@ -171,7 +171,7 @@ read_can_message(const uint8_t channel,
     if(read(can_socket_fd[channel], &frame, sizeof(struct can_frame)) \
             != sizeof(struct can_frame)) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            log_trace("Channel %hu is empty", channel);
+            log_trace("Channel %hu is empty, all message handled", channel);
             return 1; // Receive queue is empty.
         }
         else {

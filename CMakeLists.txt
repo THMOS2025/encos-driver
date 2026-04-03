@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Keep your existing Library and Executable logic ---
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 set(LIB_SOURCES
@@ -40,7 +40,9 @@ target_link_libraries(encos_driver_lib PRIVATE m)
 # target_include_directories(encos_driver PRIVATE include src)
 
 add_executable(encos_driver src/main.c)
-add_executable(motor_test src/motor_test.c)
+# add_executable(motor_test src/motor_test.c)
+add_executable(main src/main.c)
 
 target_link_libraries(encos_driver PRIVATE encos_driver_lib m)
-target_link_libraries(motor_test PRIVATE encos_driver_lib m)
+# target_link_libraries(motor_test PRIVATE encos_driver_lib m)
+target_link_libraries(main PRIVATE encos_driver_lib m)
