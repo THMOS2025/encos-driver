@@ -21,6 +21,7 @@ int set_motors_pos(const float qpos[MOTOR_COUNT]);
 int get_motors_pos_vel(float qpos[MOTOR_COUNT], float qvel[MOTOR_COUNT]);
 
 /* Config */
+int send_motor_set_id(const uint8_t old_id, const uint8_t new_id);
 int send_motors_query(const uint8_t code);
 int send_motors_set_pos_range(const float qpos_range[2][MOTOR_COUNT]);
 int send_motors_set_vel_range(const float qpos_range[2][MOTOR_COUNT]);

@@ -6,6 +6,7 @@
 
 int driver_initialize();
 int driver_uninitialize();
+int driver_set_id(const uint8_t old_id, const uint8_t new_id);
 int driver_set_motor_zero(const uint8_t id);
 int driver_push_msg();
 int driver_pull_msg();

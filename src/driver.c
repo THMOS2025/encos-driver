@@ -43,37 +43,34 @@ LIB_API int driver_initialize()
     driver_pull_msg();
 }
 
-LIB_API int driver_uninitialize()
-{
+LIB_API int driver_uninitialize() {
     return uninitialize_motors();
 }
 
-LIB_API int driver_set_motor_zero(const uint8_t id)
-{
+LIB_API int driver_set_id(const uint8_t old_id, const uint8_t new_id) {
+    return send_motor_set_id(old_id, new_id);
+}
+
+LIB_API int driver_set_motor_zero(const uint8_t id) {
     return send_motor_set_zero(id);
 }
 
-LIB_API int driver_pull_msg()
-{
+LIB_API int driver_pull_msg() {
     return pull_motors_msg();
 }
 
-LIB_API int driver_push_msg()
-{
+LIB_API int driver_push_msg() {
     return push_motors_msg();
 }
 
-LIB_API int driver_set_qpos(const float qpos[])
-{
+LIB_API int driver_set_qpos(const float qpos[]) {
     return set_motors_pos(qpos);
 }
 
-LIB_API int driver_get_qpos_qvel(float qpos[], float qvel[])
-{
+LIB_API int driver_get_qpos_qvel(float qpos[], float qvel[]) {
     return get_motors_pos_vel(qpos, qvel);
 }
 
-LIB_API int driver_send_query(const uint8_t code)
-{
+LIB_API int driver_send_query(const uint8_t code) {
     return send_motors_query(code);
 }

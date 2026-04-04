@@ -22,7 +22,8 @@ The project is structured into three main layers:
    - Exposes simplified APIs for applications to control all motors simultaneously.
    - Abstract limits, conversions, and states, providing pure geometric/kinematic variables to the user.
 
-*(Optional: The project also includes Python bindings using pybind11 in `driver_pybind.cpp`).*
+*(Optional: The project also includes Python bindings using pybind11 in `driver_pybind.cpp`.)*
+Note: Python bindings are not working yet; only LIBAPI interfaces are currently exposed.
 
 ## Dependencies
 
@@ -54,6 +55,8 @@ This will produce:
 
 ### 2. Build Python Bindings
 If you want to use the driver from Python:
+
+Note: Python bindings are not working yet; only LIBAPI interfaces are currently exposed.
 
 ```bash
 cd build

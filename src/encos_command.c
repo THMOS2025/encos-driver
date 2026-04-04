@@ -38,6 +38,14 @@ static uint16_t current_pos_raw[MOTOR_COUNT];
 static uint16_t current_vel_raw[MOTOR_COUNT];
 static uint16_t current_cur_raw[MOTOR_COUNT];
 
+static int get_available_channel(const uint8_t id, uint8_t *channel) {
+    const uint8_t ch = motor_to_channel[id];
+    if (ch == 0xFF || channel_available[ch] == 0)
+        return -1;
+    *channel = ch;
+    return 0;
+}
+
 /*
  * Send command
  */
@@ -256,8 +264,9 @@ int scan_motors(const uint32_t timeout_us) {
 }
 
 int send_motor_set_zero(const uint8_t id) {
-    if (motor_to_channel[id] != 0xFF && channel_available[motor_to_channel[id]])
-        return send_set_zero(motor_to_channel[id], id);
+    uint8_t channel = 0;
+    if (get_available_channel(id, &channel) == 0)
+        return send_set_zero(channel, id);
     log_warn("Can not send set zero for motor %hu", id);
     return -1;
 }
@@ -265,7 +274,7 @@ int send_motor_set_zero(const uint8_t id) {
 int push_motors_msg() {
     uint8_t ok_cnt = 0;
     for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
-        if((i = motor_to_channel[j]) == 0xFF || channel_available[i] == 0) 
+        if (get_available_channel(j, &i) != 0)
             continue;
         if(send_pos_control(i, j) == 0) ++ok_cnt;
     }
@@ -279,7 +288,8 @@ int push_motors_msg() {
 int pull_motors_msg() {
     for (uint8_t i = 0; i < CHANNEL_COUNT; ++i) {
         while (read_next_msg(i) == 0) {
-            if (parse_motor_status() <= 0)          continue; if (parse_motor_id() <= 0)              continue;
+            if (parse_motor_status() <= 0)          continue; 
+            if (parse_motor_id() <= 0)              continue;
             if (parse_motor_set_range() <= 0)       continue;
             if (parse_motor_query() <= 0)  continue;
             continue;
@@ -318,10 +328,10 @@ static int send_motors_set_range(const float cfg_range[2][MOTOR_COUNT],
         const float scaler, const uint8_t code) {
     uint8_t ok_cnt = 0;
     for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
-        if ((i = motor_to_channel[j]) == 0xFF || channel_available[i] == 0)
+        if (get_available_channel(j, &i) != 0)
             continue;
         if (send_range_config(
-                    motor_to_channel[j], j, code,
+                    i, j, code,
                     (self_range[0][j] = (uint16_t)(cfg_range[0][j] * scaler)), /* minn */
                     (self_range[1][j] = (uint16_t)(cfg_range[1][j] * scaler))  /* maxn */
                     ) != 0)
@@ -335,10 +345,16 @@ static int send_motors_set_range(const float cfg_range[2][MOTOR_COUNT],
     }
 }
 
+int send_motor_set_id(const uint8_t old_id, const uint8_t new_id) {
+    uint8_t channel = 0;
+    if (get_available_channel(old_id, &channel) == 0)
+        send_set_id(channel, old_id, new_id);
+}
+
 int send_motors_query(const uint8_t code) {
     int ret = 0;
     for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
-        if ((i = motor_to_channel[j]) == 0xFF || channel_available[i] == 0)
+        if (get_available_channel(j, &i) != 0)
             continue;
         ret |= send_motor_query(i, j, code);
     }
@@ -367,7 +383,7 @@ int send_motors_set_kd_range(const float qkd_range[2][MOTOR_COUNT]) {
 int send_motors_enable_kt(const bool enable[MOTOR_COUNT]) {
     int ret = 0;
     for (uint8_t j = 0, i; j < MOTOR_COUNT; ++j) {
-        if((i = motor_to_channel[j]) == 0xFF || channel_available[i] == 0)
+        if (get_available_channel(j, &i) != 0)
             continue;
         ret |= send_enable_kt(i, j, enable[j]);
     }
