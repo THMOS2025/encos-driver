@@ -66,6 +66,12 @@ if(BUILD_PYTHON_BINDINGS)
     pybind11_add_module(encos_python src/driver_pybind.cpp)
     target_link_libraries(encos_python PRIVATE encos_driver_lib)
     target_include_directories(encos_python PRIVATE include src)
+    set_target_properties(encos_python PROPERTIES
+        BUILD_RPATH "$ORIGIN"
+        INSTALL_RPATH "$ORIGIN"
+    )
+    install(TARGETS encos_python LIBRARY DESTINATION .)
+    install(TARGETS encos_driver_lib LIBRARY DESTINATION .)
 endif()
 
 add_executable(encos_driver src/main.c)
