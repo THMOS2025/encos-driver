@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(BUILD_PYTHON_BINDINGS "Build Python bindings with pybind11" OFF)
 
 # --- Keep your existing Library and Executable logic ---
 if(NOT CMAKE_BUILD_TYPE)
@@ -26,18 +27,46 @@ set_target_properties(encos_driver_lib PROPERTIES
 target_include_directories(encos_driver_lib PUBLIC include PRIVATE src deps/log.c/src/)
 target_link_libraries(encos_driver_lib PRIVATE m)
 
-# --- New Pybind11 Logic ---
+if(BUILD_PYTHON_BINDINGS)
+    find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
+    if(NOT Python3_Interpreter_FOUND)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    endif()
 
-# Find pybind11 - this requires pybind11 to be installed on your system
-# find_package(pybind11 REQUIRED)
+    if(TARGET Python3::Module)
+        set(PYBIND11_FINDPYTHON ON)
+    else()
+        set(PYBIND11_FINDPYTHON OFF)
+        set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+    endif()
 
-# pybind11_add_module(encos_driver src/driver_pybind.cpp)
+    find_package(pybind11 CONFIG QUIET)
 
-# Link the python module to your driver library
-# target_link_libraries(encos_driver PRIVATE encos_driver_lib)
+    if(NOT pybind11_FOUND)
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} -m pybind11 --cmakedir
+            RESULT_VARIABLE pybind11_cmakedir_result
+            OUTPUT_VARIABLE pybind11_cmakedir_output
+            ERROR_VARIABLE pybind11_cmakedir_error
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
 
-# Ensure the python module can find your headers
-# target_include_directories(encos_driver PRIVATE include src)
+        if(pybind11_cmakedir_result EQUAL 0 AND EXISTS "${pybind11_cmakedir_output}")
+            set(pybind11_DIR "${pybind11_cmakedir_output}")
+            find_package(pybind11 CONFIG REQUIRED)
+        else()
+            message(FATAL_ERROR
+                "pybind11 not found for Python interpreter: ${Python3_EXECUTABLE}\n"
+                "Install pybind11 into that interpreter, or pass -Dpybind11_DIR=<path-to-pybind11Config.cmake>.\n"
+                "Interpreter error: ${pybind11_cmakedir_error}"
+            )
+        endif()
+    endif()
+
+    pybind11_add_module(encos_python src/driver_pybind.cpp)
+    target_link_libraries(encos_python PRIVATE encos_driver_lib)
+    target_include_directories(encos_python PRIVATE include src)
+endif()
 
 add_executable(encos_driver src/main.c)
 # add_executable(motor_test src/motor_test.c)

@@ -2,7 +2,7 @@ import numpy as np
 import time
 import csv
 import os
-import motor_driver # This is the compiled .so from encos-driver
+import encos_python as motor_driver
 
 def generate_chirp(t, f_start, f_end, T, amplitude):
     """
@@ -58,21 +58,19 @@ def run_sysid(motor_id=0, mode='5x'):
             # The driver takes an array of MOTOR_COUNT. We only control one for SysID.
             qpos_cmd = np.zeros(20) # Assuming 20 motors max as per constant.h
             qpos_cmd[motor_id] = target
-            motor_driver.send_qpos(qpos_cmd)
+            motor_driver.set_qpos(qpos_cmd.tolist())
             
             # Pull feedback
             motor_driver.pull_msg()
             fb_pos = motor_driver.get_positions()
             fb_vel = motor_driver.get_velocities()
-            fb_tor = motor_driver.get_torques()
             
             # Record
             data_log.append([
                 time.time() - start_time,
                 target,
                 fb_pos[motor_id],
-                fb_vel[motor_id],
-                fb_tor[motor_id]
+                fb_vel[motor_id]
             ])
             
             # Wait for next step
@@ -90,7 +88,7 @@ def run_sysid(motor_id=0, mode='5x'):
     filename = f"sysid_data_{mode}_{int(time.time())}.csv"
     with open(filename, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['time', 'target_pos', 'actual_pos', 'actual_vel', 'actual_tor'])
+        writer.writerow(['time', 'target_pos', 'actual_pos', 'actual_vel'])
         writer.writerows(data_log)
     
     print(f"Done. Data saved to {filename}")

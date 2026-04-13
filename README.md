@@ -60,9 +60,18 @@ Note: Python bindings are not working yet; only LIBAPI interfaces are currently 
 
 ```bash
 cd build
-cmake -DBUILD_PYTHON_BINDINGS=ON ..
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON_BINDINGS=ON ..
 make
 ```
+
+Use your conda env:
+```bash
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON_BINDINGS=ON -DPython3_EXECUTABLE="$(which python)" ..
+cmake --build . -j
+```
+
+
 This will produce `encos_python.so` (or similar) in the build directory.
 
 ## Testing
@@ -77,6 +86,12 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/build
 ```
 
 ### Python Version
+```bash
+conda activate your_env
+cd encos-driver
+pip install .
+```
+
 Use the provided `scripts/sysid_chirp.py` or a simple script:
 
 ```python

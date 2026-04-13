@@ -1,5 +1,4 @@
 #include <pybind11/stl.h>
-#include <pybind11/numpy.h>
 #include <vector>
 #include <stdexcept>
 
@@ -11,17 +10,6 @@ extern "C" {
 
 namespace py = pybind11;
 
-// Helper for zero-copy memory mapping of global float arrays
-static py::array_t<float> get_mapped_array(float* ptr) {
-    if (!ptr) return py::array_t<float>();
-    return py::array_t<float>(
-        { (size_t)MOTOR_COUNT }, // shape
-        { sizeof(float) },       // strides
-        ptr,                     // data pointer
-        py::capsule(ptr, [](void *f) {}) // dummy cleanup
-    );
-}
-
 PYBIND11_MODULE(encos_python, m) {
     m.doc() = "Python bindings for Encos Motor Driver";
 
@@ -29,22 +17,19 @@ PYBIND11_MODULE(encos_python, m) {
     
     m.def("uninitialize", &driver_uninitialize, "Uninitialize the motor driver");
 
-    // Direct memory views (Zero-copy)
-    m.def("get_positions", []() { return get_mapped_array(read_joints_pos()); });
-    m.def("get_velocities", []() { return get_mapped_array(read_joints_vel()); });
-    m.def("get_currents", []() { return get_mapped_array(read_joints_cur()); });
-
     m.def("set_motor_zero", &driver_set_motor_zero, py::arg("id"), 
           "Set the current position of a specific motor as zero");
 
     m.def("pull_msg", &driver_pull_msg, "Pull messages from the CAN bus");
+    m.def("push_msg", &driver_push_msg, "Push buffered command messages to the CAN bus");
+    m.def("send_query", &driver_send_query, py::arg("code"), "Send a query command code to all motors");
 
     // Wrapper for sending positions: accepts a list/vector of floats
-    m.def("send_qpos", [](const std::vector<float>& pos) {
+    m.def("set_qpos", [](const std::vector<float>& pos) {
         if (pos.size() != MOTOR_COUNT) {
             throw std::runtime_error("Input size must match MOTOR_COUNT (" + std::to_string(MOTOR_COUNT) + ")");
         }
-        return driver_send_qpos(pos.data());
+        return driver_set_qpos(pos.data());
     }, "Send target positions to all motors");
 
     // Wrapper for getting positions/velocities: returns a tuple of two lists
@@ -60,6 +45,26 @@ PYBIND11_MODULE(encos_python, m) {
 
         return std::make_tuple(qpos, qvel);
     }, "Get current positions and velocities of all motors");
+
+    m.def("get_positions", []() {
+        std::vector<float> qpos(MOTOR_COUNT);
+        std::vector<float> qvel(MOTOR_COUNT);
+        int result = driver_get_qpos_qvel(qpos.data(), qvel.data());
+        if (result < 0) {
+            throw std::runtime_error("Failed to get motor positions");
+        }
+        return qpos;
+    }, "Get current positions of all motors");
+
+    m.def("get_velocities", []() {
+        std::vector<float> qpos(MOTOR_COUNT);
+        std::vector<float> qvel(MOTOR_COUNT);
+        int result = driver_get_qpos_qvel(qpos.data(), qvel.data());
+        if (result < 0) {
+            throw std::runtime_error("Failed to get motor velocities");
+        }
+        return qvel;
+    }, "Get current velocities of all motors");
 
     // Export the MOTOR_COUNT constant so Python knows the limit
     m.attr("MOTOR_COUNT") = MOTOR_COUNT;
