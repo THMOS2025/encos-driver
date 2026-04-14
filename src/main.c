@@ -26,6 +26,7 @@ int main(int argc, char **argv)
     usleep(1000000);
     driver_pull_msg();
     driver_set_motor_zero(new_id);
+    return 0;
     
     printf("ts, cmdpos, curpos, curspd\n");
     for(int i = 0; i < 10000; ++i) {

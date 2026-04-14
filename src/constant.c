@@ -17,7 +17,13 @@ const uint32_t  INITIAL_SCAN_MOTOR_TIME = 4;
 const char*     CHANNEL_NAME[]          = {"can2", "can3", "can4", "can5"};
 
 const int LOG_LEVEL = LOG_DEBUG;
-
+/*
+"right_shoulder_pitch","right_shoulder_roll","right_elbow",
+"left_shoulder_pitch","left_shoulder_roll", "left_elbow",
+"right_hip_pitch", "right_hip_roll", "right_hip_yaw", "right_knee", "right_ankle_pitch", "right_ankle_roll",
+"left_hip_pitch", "left_hip_roll", "left_hip_yaw", "left_knee", "left_ankle_pitch", "left_ankle_roll",	
+"head yaw","head pitch"
+*/
 /* Limit qpos: physical range in rad. Sent as int16 * scaler(100) to motor. */
 const float QPOS_RANGE[2][MOTOR_COUNT] = {
     {   -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f, -12.5f,
@@ -42,16 +48,28 @@ const float QTOR_RANGE[2][MOTOR_COUNT] = {
  *      Currently only use the maximum
  */
 const float QKP_RANGE[2][MOTOR_COUNT] = {
+    /* right_shoulder_pitch, right_shoulder_roll, right_elbow, left_shoulder_pitch, left_shoulder_roll, left_elbow,
+       right_hip_pitch, right_hip_roll, right_hip_yaw, right_knee, right_ankle_pitch, right_ankle_roll,
+       left_hip_pitch, left_hip_roll, left_hip_yaw, left_knee, left_ankle_pitch, left_ankle_roll,
+       head_yaw, head_pitch */
     {  0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,
        0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f,   0.0f},
-    {100.0f, 500.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f,
-     100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f, 100.0f}
+    {120.0f, 120.0f, 120.0f, 120.0f, 120.0f, 120.0f,  
+     98.31f,  98.31f,  98.31f,  98.31f, 98.31f,  120.0f, 
+     98.31f,  98.31f,  98.31f,  98.31f, 98.31f,  120.0f,
+     120.0f, 120.0f}
 };
 const float QKD_RANGE[2][MOTOR_COUNT] = {
+    /* right_shoulder_pitch, right_shoulder_roll, right_elbow, left_shoulder_pitch, left_shoulder_roll, left_elbow,
+       right_hip_pitch, right_hip_roll, right_hip_yaw, right_knee, right_ankle_pitch, right_ankle_roll,
+       left_hip_pitch, left_hip_roll, left_hip_yaw, left_knee, left_ankle_pitch, left_ankle_roll,
+       head_yaw, head_pitch */
     { 0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,
       0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f},
-    {10.0f,  1.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f,
-     10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f, 10.0f}
+    { 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  
+      2.77f,  2.77f,  2.77f,  2.77f, 2.77f,  1.0f, 
+      2.77f,  2.77f,  2.77f,  2.77f, 2.77f,  1.0f,
+      1.0f,  1.0f}
 };
 
 
