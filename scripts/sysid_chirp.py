@@ -44,54 +44,54 @@ def run_sysid(motor_id=0, mode='5x'):
     
     # Pre-generate trajectory
     t_arr = np.linspace(0, T, int(T * fs))
-    pos_targets = generate_chirp(t_arr, f_start, f_end, T, amplitude)
+    # pos_targets = generate_chirp(t_arr, f_start, f_end, T, amplitude)
     
-    data_log = []
+    # data_log = []
     
-    start_time = time.time()
-    try:
-        for i, target in enumerate(pos_targets):
-            # Control loop timing
-            loop_start = time.time()
+    # start_time = time.time()
+    # try:
+    #     for i, target in enumerate(pos_targets):
+    #         # Control loop timing
+    #         loop_start = time.time()
             
-            # Send command
-            # The driver takes an array of MOTOR_COUNT. We only control one for SysID.
-            qpos_cmd = np.zeros(20) # Assuming 20 motors max as per constant.h
-            qpos_cmd[motor_id] = target
-            motor_driver.set_qpos(qpos_cmd.tolist())
+    #         # Send command
+    #         # The driver takes an array of MOTOR_COUNT. We only control one for SysID.
+    #         qpos_cmd = np.zeros(20) # Assuming 20 motors max as per constant.h
+    #         qpos_cmd[motor_id] = target
+    #         motor_driver.set_qpos(qpos_cmd.tolist())
             
-            # Pull feedback
-            motor_driver.pull_msg()
-            fb_pos = motor_driver.get_positions()
-            fb_vel = motor_driver.get_velocities()
+    #         # Pull feedback
+    #         motor_driver.pull_msg()
+    #         fb_pos = motor_driver.get_positions()
+    #         fb_vel = motor_driver.get_velocities()
             
-            # Record
-            data_log.append([
-                time.time() - start_time,
-                target,
-                fb_pos[motor_id],
-                fb_vel[motor_id]
-            ])
+    #         # Record
+    #         data_log.append([
+    #             time.time() - start_time,
+    #             target,
+    #             fb_pos[motor_id],
+    #             fb_vel[motor_id]
+    #         ])
             
-            # Wait for next step
-            elapsed = time.time() - loop_start
-            wait_time = (1.0 / fs) - elapsed
-            if wait_time > 0:
-                time.sleep(wait_time)
+    #         # Wait for next step
+    #         elapsed = time.time() - loop_start
+    #         wait_time = (1.0 / fs) - elapsed
+    #         if wait_time > 0:
+    #             time.sleep(wait_time)
                 
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-    finally:
-        motor_driver.uninitialize()
+    # except KeyboardInterrupt:
+    #     print("Interrupted by user")
+    # finally:
+    #     motor_driver.uninitialize()
 
-    # Save to CSV
-    filename = f"sysid_data_{mode}_{int(time.time())}.csv"
-    with open(filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['time', 'target_pos', 'actual_pos', 'actual_vel'])
-        writer.writerows(data_log)
+    # # Save to CSV
+    # filename = f"sysid_data_{mode}_{int(time.time())}.csv"
+    # with open(filename, 'w', newline='') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerow(['time', 'target_pos', 'actual_pos', 'actual_vel'])
+    #     writer.writerows(data_log)
     
-    print(f"Done. Data saved to {filename}")
+    # print(f"Done. Data saved to {filename}")
 
 if __name__ == "__main__":
     # Example usage: python sysid_chirp.py

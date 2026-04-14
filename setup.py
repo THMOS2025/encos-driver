@@ -40,6 +40,8 @@ class CMakeBuild(build_ext):
 
 
 setup(
+    name = "encos-driver",
+    version = "0.1.0",
     ext_modules=[CMakeExtension("encos_python", sourcedir=".")],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,

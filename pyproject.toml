@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.10", "pybind11>=2.11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "encos_driver"
+name = "encos_python"
 version = "0.1.0"
 description = "Modern Python bindings for Encos Motor Driver"
 authors = [{name = "Your Name"}]

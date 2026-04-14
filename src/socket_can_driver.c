@@ -25,9 +25,10 @@
 
 #include "log.h"
 #include "socket_can_driver.h" 
+#include "constant.h"
 
 
-const char IP_LINK_UP_COMMAND[] = "sudo ip link set can%hu up type can "
+const char IP_LINK_UP_COMMAND[] = "sudo ip link set %s up type can "
                                   "bitrate 1000000 loopback off 2>/dev/null";
 
 
@@ -54,7 +55,7 @@ initialize_can(const uint8_t channel)
 
     /* Configure netlink intnerface */
     char buf[80];
-    sprintf(buf, IP_LINK_UP_COMMAND, channel);
+    sprintf(buf, IP_LINK_UP_COMMAND, CHANNEL_NAME[channel]);
     if((ret = system(buf)) < 0) {
         log_warn("Can not link up channel %hu\n command: %s", channel, buf);
         return 1;
@@ -77,7 +78,7 @@ initialize_can(const uint8_t channel)
 
     /* Resolve the interface name to an index */
     struct ifreq ifr;
-    sprintf(ifr.ifr_name, "can%hu", channel);
+    strcpy(ifr.ifr_name, CHANNEL_NAME[channel]);
     if((ret = ioctl(s, SIOCGIFINDEX, &ifr)) < 0) {
         log_warn("Can not open channel %hu, reason: %s", channel, strerror(errno));
         goto FAILED_OPENED;
